@@ -192,6 +192,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			hint += " or read " + src + " for what was cut"
 		}
 		res.Next = append(res.Next, hint)
+		reduce.Fit(&res, *maxBytes) // the hint takes room too
 	}
 	write(stdout, &res, *format, *pretty)
 	return 0

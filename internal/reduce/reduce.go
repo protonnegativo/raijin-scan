@@ -92,15 +92,34 @@ func Reduce(events []nuclei.Event, opt Options) ([]schema.Finding, []schema.Grou
 		b.order = append(b.order, host)
 	}
 
-	var findings []schema.Finding
-	var groups []schema.Group
+	findings := []schema.Finding{}
+	groups := []schema.Group{}
 	allHosts := map[string][]string{}
+	// info matches are grouped per template: all matchers of one template become one group
+	type infoGroup struct {
+		hosts    map[string]bool
+		variants []string
+	}
+	infos := map[string]*infoGroup{}
+	var infoOrder []string
 	for _, key := range keys {
 		b := buckets[key]
 		hosts := append([]string(nil), b.order...)
 		sort.Strings(hosts)
 		if b.finding.Severity == "info" && !opt.IncludeInfo {
-			groups = append(groups, schema.Group{ID: key, Count: len(hosts), Examples: firstN(hosts, opt.MaxGroupExamples)})
+			tmpl := strings.TrimPrefix(b.finding.EngineRef, "nuclei:")
+			g, ok := infos[tmpl]
+			if !ok {
+				g = &infoGroup{hosts: map[string]bool{}}
+				infos[tmpl] = g
+				infoOrder = append(infoOrder, tmpl)
+			}
+			for _, h := range hosts {
+				g.hosts[h] = true
+			}
+			if v := strings.TrimPrefix(key, tmpl+":"); v != key {
+				g.variants = append(g.variants, v)
+			}
 			continue
 		}
 		f := b.finding
@@ -109,6 +128,17 @@ func Reduce(events []nuclei.Event, opt Options) ([]schema.Finding, []schema.Grou
 		f.Hosts = firstN(hosts, opt.MaxHostExamples)
 		f.Evidence = b.evidence
 		findings = append(findings, f)
+	}
+
+	for _, tmpl := range infoOrder {
+		g := infos[tmpl]
+		hosts := make([]string, 0, len(g.hosts))
+		for h := range g.hosts {
+			hosts = append(hosts, h)
+		}
+		sort.Strings(hosts)
+		sort.Strings(g.variants)
+		groups = append(groups, schema.Group{ID: tmpl, Count: len(hosts), Examples: firstN(hosts, opt.MaxGroupExamples), Variants: g.variants})
 	}
 
 	sort.SliceStable(findings, func(i, j int) bool {
@@ -162,6 +192,7 @@ func Fit(res *schema.Result, maxBytes int) {
 	}
 	for i := range res.Groups {
 		res.Groups[i].Examples = nil
+		res.Groups[i].Variants = firstN(res.Groups[i].Variants, 3)
 	}
 	for size(res) > maxBytes && len(res.Groups) > 0 {
 		res.Groups = res.Groups[:len(res.Groups)-1]

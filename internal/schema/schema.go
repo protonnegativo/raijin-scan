@@ -34,6 +34,7 @@ type Group struct {
 	ID       string   `json:"id"`
 	Count    int      `json:"count"`
 	Examples []string `json:"examples"`
+	Variants []string `json:"variants,omitempty"`
 }
 
 // Error is a problem during the run, with a hint about what to try next.

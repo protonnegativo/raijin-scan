@@ -59,7 +59,7 @@ Targets outside the scope are dropped before nuclei runs, and results for out-of
       "new": true
     }
   ],
-  "groups": [{"id": "tech-detect:python", "count": 2, "examples": ["127.0.0.1:18080", "localhost:18080"]}],
+  "groups": [{"id": "tech-detect", "count": 2, "examples": ["127.0.0.1:18080", "localhost:18080"], "variants": ["python", "simplehttp"]}],
   "omitted": {"out_of_scope": 1},
   "errors": [],
   "next": [],
@@ -70,7 +70,7 @@ Targets outside the scope are dropped before nuclei runs, and results for out-of
 What the reducer does:
 
 - **One finding per template and matcher**, across every host. The first 5 hosts are listed; `hosts_count` has the total.
-- **Info-level matches become `groups`** (count and 3 examples) unless you pass `--include-info`.
+- **Info-level matches become one `group` per template** (host count, 3 examples, and the matcher names in `variants`) unless you pass `--include-info`.
 - **Evidence is the matched URL, the matcher and up to 3 extracted values**, cut at 300 characters. It never includes the request or response.
 - **Ranking:** severity first, then the number of hosts.
 - **Budget:** `--max-items` caps the findings; `--max-bytes` shrinks host examples, then groups, then the lowest-ranked findings until the JSON fits. Whatever was cut is counted in `omitted` and `budget.truncated` is set.
@@ -107,7 +107,6 @@ Standard library only. nuclei runs as a subprocess with `-jsonl -omit-raw`, so t
 
 ## Roadmap
 
-- Merge info groups from the same template (for example 10 `http-missing-security-headers:*` groups into one).
 - `next` suggestions from detected tech.
 - Optional embedded nuclei SDK instead of the subprocess.
 - `raijin-mcp` will expose this tool to MCP clients.

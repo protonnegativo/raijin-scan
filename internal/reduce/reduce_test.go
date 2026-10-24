@@ -50,7 +50,7 @@ func TestReduce(t *testing.T) {
 	if !strings.Contains(findings[0].Evidence, "extracted=DB_PASSWORD=x, APP_KEY=y, AWS_KEY=z") || strings.Contains(findings[0].Evidence, "EXTRA") {
 		t.Errorf("evidence should keep the first 3 extracted values: %q", findings[0].Evidence)
 	}
-	if len(groups) != 1 || groups[0].ID != "tech-detect:nginx" || groups[0].Count != 3 || len(groups[0].Examples) != 3 {
+	if len(groups) != 1 || groups[0].ID != "tech-detect" || groups[0].Count != 3 || len(groups[0].Examples) != 3 || strings.Join(groups[0].Variants, ",") != "nginx" {
 		t.Errorf("groups = %+v", groups)
 	}
 	if omitted["duplicates"] != 1 || omitted["out_of_scope"] != 1 {
@@ -100,5 +100,23 @@ func TestFit(t *testing.T) {
 	}
 	if len(res.Findings[0].Hosts) != 1 {
 		t.Errorf("host examples should shrink to 1 first")
+	}
+}
+
+func TestInfoGroupsMergePerTemplate(t *testing.T) {
+	var events []nuclei.Event
+	for _, m := range []string{"x-frame-options", "content-security-policy", "referrer-policy"} {
+		for _, h := range []string{"a", "b"} {
+			ev := nuclei.Event{TemplateID: "http-missing-security-headers", MatcherName: m, Host: h, MatchedAt: "https://" + h}
+			ev.Info.Severity = "info"
+			events = append(events, ev)
+		}
+	}
+	findings, groups, _, _ := Reduce(events, Defaults())
+	if findings == nil || len(findings) != 0 {
+		t.Errorf("findings should be an empty, non-nil slice: %#v", findings)
+	}
+	if len(groups) != 1 || groups[0].ID != "http-missing-security-headers" || groups[0].Count != 2 || len(groups[0].Variants) != 3 {
+		t.Errorf("groups = %+v", groups)
 	}
 }

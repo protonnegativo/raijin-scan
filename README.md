@@ -12,6 +12,11 @@
 
 nuclei is built for people and pipelines. An agent pays for every byte it reads. Its JSONL output repeats the template metadata, the `curl` command and the request and response once per match. The text output is one line per match and starts with a banner and log lines.
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Two terminals side by side run the same scan at the same time: raijin-scan on the left prints one compact JSON with 3 findings and 1 info group, 1,038 bytes and 341 tokens; nuclei -jsonl on the right floods the screen with full requests and responses, 40,118 bytes and 13,787 tokens" width="900">
+</p>
+<p align="center"><sub>Recorded in a real terminal with VHS (<code>vhs docs/demo.tape</code>) against a local lab on 127.0.0.1, both scans started at the same moment. The wait for the scans is fast-forwarded. Sizes are of the exact output on screen, tokens counted with <code>o200k_base</code>. The lab is smaller than the benchmark's, so the numbers differ from the table below.</sub></p>
+
 Here is the same scan, with the same matches, read by an agent (tokens, `o200k_base`):
 
 | | **Broad scan**: 2,852 templates, 124 matches, all info | **Exposures**: 30 matches, 3 real findings (2 high, 1 medium) |

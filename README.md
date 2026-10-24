@@ -19,12 +19,15 @@ nuclei is built for people and pipelines. An agent pays for every byte it reads.
 
 Here is the same scan, with the same matches, read by an agent (tokens, `o200k_base`):
 
-| | **Broad scan**: 2,852 templates, 124 matches, all info | **Exposures**: 30 matches, 3 real findings (2 high, 1 medium) |
-|---|---:|---:|
-| nuclei `-jsonl` | 72,698 | 15,831 |
-| nuclei `-jsonl -omit-raw` | 44,771 | 9,216 |
-| nuclei text output | 3,675 | 938 |
-| **raijin-scan** | **434** (**168×** fewer than JSONL) | **430** (**37×** fewer than JSONL) |
+| Scan | raijin-scan | nuclei `-jsonl` | Fewer tokens |
+|---|---:|---:|---:|
+| **Broad:** 2,852 templates, 124 matches, all info | **434** | 72,698 | **168×** |
+| **Exposures:** 30 matches, 3 real findings (2 high, 1 medium) | **430** | 15,831 | **37×** |
+
+Other nuclei output modes on the same scans:
+
+- `-jsonl -omit-raw`: 44,771 tokens on the broad scan and 9,216 on the exposures scan.
+- Text output: 3,675 and 938 tokens.
 
 - **Nothing is lost.** Every nuclei match, a template plus the exact URL, is in the output. `bench/verify.py` checked all 154 matches in both scans and none were missing.
 - **The real problems come first.** Findings are ranked by severity. 100 missing-header matches become one group: the 10 header names and the 10 URLs.

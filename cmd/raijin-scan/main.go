@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/protonnegativo/raijin-scan/internal/banner"
 	"github.com/protonnegativo/raijin-scan/internal/nuclei"
 	"github.com/protonnegativo/raijin-scan/internal/reduce"
 	"github.com/protonnegativo/raijin-scan/internal/schema"
@@ -54,12 +55,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 	input := fs.String("input", "", "read an existing nuclei JSONL file instead of running nuclei")
 	bin := fs.String("nuclei", "nuclei", "path to the nuclei binary")
 	showVersion := fs.Bool("version", false, "print the version")
+	showBanner := fs.Bool("banner", false, "print the Raijin banner to stderr (off by default to keep output small)")
 	fs.Usage = func() {
 		fmt.Fprintf(stderr, "usage: raijin-scan --scope scope.txt (-u target | -l targets.txt | --input results.jsonl) [flags] [-- extra nuclei args]\n\n")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
 		return 1
+	}
+	if *showBanner {
+		banner.Write(stderr, "raijin-scan", version, useColor(stderr))
 	}
 	if *showVersion {
 		fmt.Fprintln(stdout, "raijin-scan", version)
@@ -172,6 +177,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 	reduce.Fit(&res, *maxBytes)
 	write(stdout, &res, *format)
 	return 0
+}
+
+// useColor is true when w is a terminal and NO_COLOR is not set.
+func useColor(w io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	fi, err := f.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
 func filter(targets []string, sc *scope.Scope, omitted map[string]int) []string {

@@ -1,5 +1,9 @@
 # ⚡ Raijin Scan
 
+<p align="center">
+  <img src="docs/banner.png" alt="Raijin banner: a storm thunderbird in braille inside a target-lock frame, the RAIJIN name and a status HUD" width="760">
+</p>
+
 **nuclei for AI agents: the same findings, a fraction of the output.**
 
 `raijin-scan` is part of the [Raijin](https://github.com/protonnegativo/raijin) arsenal. It runs [nuclei](https://github.com/projectdiscovery/nuclei) underneath and returns the **Raijin Schema**: a small JSON with unique findings ranked by severity, the minimal evidence for each one, repeated info-level noise collapsed into groups, and a count of everything it left out.
@@ -74,6 +78,8 @@ What the reducer does:
 
 `--format table` prints a short human view of the same result.
 
+The banner above is **off by default**, so normal runs stay small. `--banner` prints it to **stderr** (never stdout, so the JSON is untouched), with the version taken from the binary. Colors are disabled when `NO_COLOR` is set or stderr is not a terminal.
+
 ## Flags
 
 | Flag | Default | |
@@ -88,6 +94,7 @@ What the reducer does:
 | `--state` | | state file for new-since-last-run |
 | `--format` | json | `json` or `table` |
 | `--nuclei` | nuclei | path to the binary |
+| `--banner` | false | print the banner to stderr |
 
 ## Development
 

@@ -4,11 +4,29 @@
   <img src="docs/banner.png" alt="Raijin banner: a storm thunderbird in braille inside a target-lock frame, the RAIJIN name and a status HUD" width="760">
 </p>
 
-**nuclei for AI agents: the same findings, a fraction of the output.**
+**nuclei for AI agents: every finding, every location, a fraction of the tokens.**
 
-`raijin-scan` is part of the [Raijin](https://github.com/protonnegativo/raijin) arsenal. It runs [nuclei](https://github.com/projectdiscovery/nuclei) underneath and returns the **Raijin Schema**: a small JSON with unique findings ranked by severity, the minimal evidence for each one, repeated info-level noise collapsed into groups, and a count of everything it left out.
+`raijin-scan` is part of the [Raijin](https://github.com/protonnegativo/raijin) arsenal. It runs [nuclei](https://github.com/projectdiscovery/nuclei) underneath and returns the **Raijin Schema**: one compact JSON with the findings ranked by severity, every location where each one matched, info-level noise collapsed into groups, and a count of anything it had to cut.
 
-On a local lab with 10 targets, the result an agent reads costs **31× to 215× fewer tokens** than nuclei's JSONL for the same matches, with the real findings first. See [BENCHMARK.md](BENCHMARK.md).
+## Why not just run nuclei?
+
+nuclei is built for people and pipelines. An agent pays for every byte it reads. Its JSONL output repeats the template metadata, the `curl` command and the request and response once per match. The text output is one line per match and starts with a banner and log lines.
+
+Here is the same scan, with the same matches, read by an agent (tokens, `o200k_base`):
+
+| | **Broad scan**: 2,852 templates, 124 matches, all info | **Exposures**: 30 matches, 3 real findings (2 high, 1 medium) |
+|---|---:|---:|
+| nuclei `-jsonl` | 72,698 | 15,831 |
+| nuclei `-jsonl -omit-raw` | 44,771 | 9,216 |
+| nuclei text output | 3,675 | 938 |
+| **raijin-scan** | **434** (**168×** fewer than JSONL) | **430** (**37×** fewer than JSONL) |
+
+- **Nothing is lost.** Every nuclei match, a template plus the exact URL, is in the output. `bench/verify.py` checked all 154 matches in both scans and none were missing.
+- **The real problems come first.** Findings are ranked by severity. 100 missing-header matches become one group: the 10 header names and the 10 URLs.
+- **Output is bounded.** On a huge scan, `--max-bytes` cuts the least important data first and counts every cut. nuclei's output grows with hosts × templates.
+- **Details are one file away.** nuclei's full JSONL is saved to disk, and its path is in `raw`. It holds the description, references, the `curl` command to reproduce, and timestamps, and it costs no tokens until the agent opens it.
+
+Against nuclei's text output, the gap is smaller: 8.5× on the broad scan and 2.2× on the exposures scan. The text output also has no structure, no dedup and no ranking. Full method and numbers are in [BENCHMARK.md](BENCHMARK.md), and `bench/run.sh` reproduces them.
 
 ## Install
 

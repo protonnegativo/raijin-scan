@@ -62,5 +62,4 @@ raijin-scan returns 3 findings, the two high ones first, each with its 2 hosts a
 
   The text output is already terse, but it is not structured. It has no dedup across hosts, no ranking and no budget, and it grows linearly with hosts × templates. It also includes nuclei's startup banner and log lines on stderr.
 - **Output size stays bounded.** raijin-scan never goes above `--max-bytes`, whatever the scan size. Raw nuclei output has no upper bound.
-
 - **Compact by default.** Pretty-printed JSON costs about 30% more tokens for the same content (482 → 338 and 710 → 501), so the JSON is one line unless you pass `--pretty`. This also makes `--max-bytes` exact, since the budget is measured on the compact encoding.

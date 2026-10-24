@@ -19,10 +19,14 @@ nuclei is built for people and pipelines. An agent pays for every byte it reads.
 
 Here is the same scan, with the same matches, read by an agent (tokens, `o200k_base`):
 
-| Scan | raijin-scan | nuclei `-jsonl` | Fewer tokens |
-|---|---:|---:|---:|
-| **Broad:** 2,852 templates, 124 matches, all info | **434** | 72,698 | **168×** |
-| **Exposures:** 30 matches, 3 real findings (2 high, 1 medium) | **430** | 15,831 | **37×** |
+| Scan | | Tokens the agent reads |
+|---|---|---:|
+| **Broad:** 2,852 templates, 124 matches, all info | raijin-scan `▏` | **434** |
+| | nuclei `-jsonl` `████████████████████` | 72,698 |
+| **Exposures:** 30 matches, 3 real findings (2 high, 1 medium) | raijin-scan `▌` | **430** |
+| | nuclei `-jsonl` `████████████████████` | 15,831 |
+
+raijin-scan reads **168×** fewer tokens on the broad scan and **37×** fewer on the exposures scan. Each scan's bars are drawn to scale against nuclei.
 
 Other nuclei output modes on the same scans:
 

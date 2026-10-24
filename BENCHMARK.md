@@ -25,7 +25,8 @@ Reproduce: `bench/run.sh ~/nuclei-templates`.
 | nuclei `-jsonl` | 124 | 220,578 | 72,698 | 1× |
 | nuclei `-jsonl -omit-raw` | 124 | 147,779 | 44,771 | 1.6× |
 | nuclei text (stdout+stderr) | 143 | 11,559 | 3,675 | 19.8× |
-| **raijin-scan JSON** | 67 | 1,518 | **482** | **151×** |
+| **raijin-scan JSON (default, compact)** | 1 | 1,061 | **338** | **215×** |
+| raijin-scan `--pretty` | 67 | 1,518 | 482 | 151× |
 | raijin-scan `--format table` | 5 | 314 | 64 | 1,136× |
 
 raijin-scan returns 0 findings and 4 groups. One of them is `http-missing-security-headers`: 10 hosts, with the 10 missing headers listed in `variants`.
@@ -46,21 +47,20 @@ raijin-scan returns 0 findings and 4 groups. One of them is `http-missing-securi
 | nuclei `-jsonl` | 30 | 46,357 | 15,831 | 1× |
 | nuclei `-jsonl -omit-raw` | 30 | 28,718 | 9,216 | 1.7× |
 | nuclei text (stdout+stderr) | 48 | 2,606 | 938 | 16.9× |
-| **raijin-scan JSON** | 89 | 2,139 | **710** | **22×** |
+| **raijin-scan JSON (default, compact)** | 1 | 1,531 | **501** | **32×** |
+| raijin-scan `--pretty` | 89 | 2,139 | 710 | 22× |
 | raijin-scan `--format table` | 10 | 574 | 129 | 123× |
 
 raijin-scan returns 3 findings, the two high ones first, each with its 2 hosts and the matched URL as evidence, plus 3 info groups.
 
 ## Reading the numbers
 
-- **Against nuclei JSONL**, the structured output an agent would parse, raijin-scan uses **22× to 151× fewer tokens**. The gap grows with noise, because repeated info matches collapse into one group instead of costing tokens per host and per header.
+- **Against nuclei JSONL**, the structured output an agent would parse, raijin-scan uses **32× to 215× fewer tokens**. The gap grows with noise, because repeated info matches collapse into one group instead of costing tokens per host and per header.
 - **Against nuclei's text output**, the gap is smaller:
-  - scenario 1 is **7.6×** (3,675 → 482 tokens);
-  - scenario 2 is about **1.3×** (938 → 710).
+  - scenario 1 is **10.9×** (3,675 → 338 tokens);
+  - scenario 2 is about **1.9×** (938 → 501).
 
   The text output is already terse, but it is not structured. It has no dedup across hosts, no ranking and no budget, and it grows linearly with hosts × templates. It also includes nuclei's startup banner and log lines on stderr.
 - **Output size stays bounded.** raijin-scan never goes above `--max-bytes`, whatever the scan size. Raw nuclei output has no upper bound.
 
-## Next
-
-- Pretty-printed JSON costs about 30% more than compact JSON for the same content (482 → 338 and 710 → 501 tokens). A compact default, with an opt-in `--pretty`, is the next cheap win.
+- **Compact by default.** Pretty-printed JSON costs about 30% more tokens for the same content (482 → 338 and 710 → 501), so the JSON is one line unless you pass `--pretty`. This also makes `--max-bytes` exact, since the budget is measured on the compact encoding.

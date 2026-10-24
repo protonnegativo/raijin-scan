@@ -8,7 +8,7 @@
 
 `raijin-scan` is part of the [Raijin](https://github.com/protonnegativo/raijin) arsenal. It runs [nuclei](https://github.com/projectdiscovery/nuclei) underneath and returns the **Raijin Schema**: a small JSON with unique findings ranked by severity, the minimal evidence for each one, repeated info-level noise collapsed into groups, and a count of everything it left out.
 
-On the same 26 nuclei matches against 2 hosts, raw nuclei JSONL is **47,151 bytes**. The `raijin-scan` output is **2,668 bytes** (17.7× smaller), with the one real finding first.
+On a local lab with 10 targets, the result an agent reads costs **31× to 215× fewer tokens** than nuclei's JSONL for the same matches, with the real findings first. See [BENCHMARK.md](BENCHMARK.md).
 
 ## Install
 
@@ -76,7 +76,7 @@ What the reducer does:
 - **Budget:** `--max-items` caps the findings; `--max-bytes` shrinks host examples, then groups, then the lowest-ranked findings until the JSON fits. Whatever was cut is counted in `omitted` and `budget.truncated` is set.
 - **Errors** say what to try next. If nuclei is missing, the exit code is 2.
 
-`--format table` prints a short human view of the same result.
+The JSON is compact (one line) by default because indentation costs about 30% more tokens; `--pretty` indents it (the example above is pretty-printed). `--format table` prints a short human view of the same result.
 
 The banner above is **off by default**, so normal runs stay small. `--banner` prints it to **stderr** (never stdout, so the JSON is untouched), with the version taken from the binary. Colors are disabled when `NO_COLOR` is set or stderr is not a terminal.
 
@@ -93,6 +93,7 @@ The banner above is **off by default**, so normal runs stay small. `--banner` pr
 | `--include-info` | false | info matches as findings, not groups |
 | `--state` | | state file for new-since-last-run |
 | `--format` | json | `json` or `table` |
+| `--pretty` | false | indent the JSON |
 | `--nuclei` | nuclei | path to the binary |
 | `--banner` | false | print the banner to stderr |
 

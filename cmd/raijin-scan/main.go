@@ -52,6 +52,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	includeInfo := fs.Bool("include-info", false, "report info-level matches as findings instead of groups")
 	statePath := fs.String("state", "", "state file; marks findings that are new since the last run")
 	format := fs.String("format", "json", "output format: json or table")
+	pretty := fs.Bool("pretty", false, "indent the JSON (compact by default, which costs fewer tokens)")
 	input := fs.String("input", "", "read an existing nuclei JSONL file instead of running nuclei")
 	bin := fs.String("nuclei", "nuclei", "path to the nuclei binary")
 	showVersion := fs.Bool("version", false, "print the version")
@@ -132,7 +133,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		case errors.Is(err, nuclei.ErrNotFound):
 			res.Errors = append(res.Errors, schema.Error{Kind: "missing_engine", Hint: "install nuclei (go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest) or pass --nuclei <path>"})
 			res.Summary = "nuclei not found; nothing was scanned"
-			write(stdout, &res, *format)
+			write(stdout, &res, *format, *pretty)
 			return 2
 		case err != nil:
 			hint := err.Error()
@@ -175,7 +176,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	reduce.Fit(&res, *maxBytes)
-	write(stdout, &res, *format)
+	write(stdout, &res, *format, *pretty)
 	return 0
 }
 
@@ -243,7 +244,7 @@ func summary(raw int, res schema.Result, newCount int) string {
 	return s
 }
 
-func write(w io.Writer, res *schema.Result, format string) {
+func write(w io.Writer, res *schema.Result, format string, pretty bool) {
 	if format == "table" {
 		fmt.Fprintln(w, res.Summary)
 		for _, f := range res.Findings {
@@ -262,7 +263,9 @@ func write(w io.Writer, res *schema.Result, format string) {
 		return
 	}
 	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
+	if pretty {
+		enc.SetIndent("", "  ")
+	}
 	_ = enc.Encode(res)
 }
 

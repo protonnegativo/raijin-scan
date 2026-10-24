@@ -48,13 +48,15 @@ scenario() {
   (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -omit-raw -rl 30 > "$o/nuclei_omitraw.jsonl")
   # raijin-scan reduces the same JSONL nuclei produced, so both sides see the same matches.
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" > "$o/raijin.json"
+  "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" --pretty > "$o/raijin_pretty.json"
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" --format table > "$o/raijin_table.txt"
   echo; echo "## $name ($(wc -l < "$o/nuclei.jsonl") nuclei matches)"; echo
   python3 "$HERE/count_tokens.py" \
     "nuclei -jsonl=$o/nuclei.jsonl" \
     "nuclei -jsonl -omit-raw=$o/nuclei_omitraw.jsonl" \
     "nuclei text (stdout+stderr)=$o/text.txt+$o/text_stderr.txt" \
-    "raijin-scan JSON=$o/raijin.json" \
+    "raijin-scan JSON (default)=$o/raijin.json" \
+    "raijin-scan --pretty=$o/raijin_pretty.json" \
     "raijin-scan --format table=$o/raijin_table.txt"
 }
 

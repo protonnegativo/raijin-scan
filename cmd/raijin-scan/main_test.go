@@ -50,3 +50,24 @@ func TestBannerGoesToStderrOnly(t *testing.T) {
 		t.Fatalf("stdout is not JSON with --banner: %v", err)
 	}
 }
+
+func TestCompactByDefault(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := run([]string{"--scope", scopeFile(t), "--input", "../../testdata/sample.jsonl"}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if n := strings.Count(out.String(), "\n"); n != 1 {
+		t.Errorf("default JSON should be one line, got %d lines", n)
+	}
+	var pretty bytes.Buffer
+	if code := run([]string{"--pretty", "--scope", scopeFile(t), "--input", "../../testdata/sample.jsonl"}, &pretty, &errb); code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(pretty.String(), "\n  \"tool\"") {
+		t.Errorf("--pretty should indent: %q", pretty.String())
+	}
+	var a, b map[string]any
+	if json.Unmarshal(out.Bytes(), &a) != nil || json.Unmarshal(pretty.Bytes(), &b) != nil || len(a) != len(b) {
+		t.Error("compact and pretty should carry the same fields")
+	}
+}

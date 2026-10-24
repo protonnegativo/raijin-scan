@@ -1,0 +1,9 @@
+{"template-id":"git-config","host":"a.example.com","matched-at":"https://a.example.com/.git/config","info":{"name":"Git Config - Detect","severity":"medium"}}
+{"template-id":"git-config","host":"b.example.com","matched-at":"https://b.example.com/.git/config","info":{"name":"Git Config - Detect","severity":"medium"}}
+{"template-id":"git-config","host":"a.example.com","matched-at":"https://a.example.com/.git/config","info":{"name":"Git Config - Detect","severity":"medium"}}
+{"template-id":"exposed-env","host":"b.example.com","matched-at":"https://b.example.com/.env","extracted-results":["DB_PASSWORD=x","APP_KEY=y","AWS_KEY=z","EXTRA=w"],"info":{"name":"Exposed .env","severity":"high"}}
+{"template-id":"tech-detect","matcher-name":"nginx","host":"a.example.com","matched-at":"https://a.example.com","info":{"name":"Wappalyzer Technology Detection","severity":"info"}}
+{"template-id":"tech-detect","matcher-name":"nginx","host":"b.example.com","matched-at":"https://b.example.com","info":{"name":"Wappalyzer Technology Detection","severity":"info"}}
+{"template-id":"tech-detect","matcher-name":"nginx","host":"c.example.com","matched-at":"https://c.example.com","info":{"name":"Wappalyzer Technology Detection","severity":"info"}}
+{"template-id":"git-config","host":"out.of-scope.net","matched-at":"https://out.of-scope.net/.git/config","info":{"name":"Git Config - Detect","severity":"medium"}}
+not json, a nuclei banner line

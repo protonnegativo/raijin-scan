@@ -105,7 +105,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "raijin-scan:", err)
 			return 1
 		}
-		res.Target = "nuclei results from " + *input
+		res.Target = *input
 	} else {
 		if *list != "" {
 			lines, err := readLines(*list)
@@ -132,7 +132,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		switch {
 		case errors.Is(err, nuclei.ErrNotFound):
 			res.Errors = append(res.Errors, schema.Error{Kind: "missing_engine", Hint: "install nuclei (go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest) or pass --nuclei <path>"})
-			res.Summary = "nuclei not found; nothing was scanned"
+			res.Summary = "nuclei not found, nothing scanned"
 			write(stdout, &res, *format, *pretty)
 			return 2
 		case err != nil:
@@ -233,13 +233,13 @@ func summary(raw int, res schema.Result, newCount int) string {
 			parts = append(parts, fmt.Sprintf("%d %s", n, sev))
 		}
 	}
-	s := fmt.Sprintf("%d unique finding(s)", len(res.Findings))
+	s := fmt.Sprintf("%d findings", len(res.Findings))
 	if len(parts) > 0 {
 		s += " (" + strings.Join(parts, ", ") + ")"
 	}
-	s += fmt.Sprintf(", %d info group(s), %d raw match(es) collapsed", len(res.Groups), raw)
+	s += fmt.Sprintf(", %d info groups, %d raw matches", len(res.Groups), raw)
 	if newCount >= 0 {
-		s += fmt.Sprintf(", %d new since last run", newCount)
+		s += fmt.Sprintf(", %d new", newCount)
 	}
 	return s
 }

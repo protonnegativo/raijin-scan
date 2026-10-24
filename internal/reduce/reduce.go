@@ -41,6 +41,7 @@ type bucket struct {
 	hosts    map[string]bool
 	order    []string
 	evidence string
+	template string
 }
 
 // Reduce collapses events into findings (one per template and matcher) and groups (info-level noise).
@@ -75,11 +76,10 @@ func Reduce(events []nuclei.Event, opt Options) ([]schema.Finding, []schema.Grou
 					ID:          key,
 					Title:       ev.Info.Name,
 					Severity:    sev,
-					Confidence:  "matched",
-					EngineRef:   "nuclei:" + ev.TemplateID,
 					Fingerprint: fingerprint(key),
 				},
 				evidence: Evidence(ev, opt.MaxEvidence),
+				template: ev.TemplateID,
 			}
 			buckets[key] = b
 			keys = append(keys, key)
@@ -107,7 +107,7 @@ func Reduce(events []nuclei.Event, opt Options) ([]schema.Finding, []schema.Grou
 		hosts := append([]string(nil), b.order...)
 		sort.Strings(hosts)
 		if b.finding.Severity == "info" && !opt.IncludeInfo {
-			tmpl := strings.TrimPrefix(b.finding.EngineRef, "nuclei:")
+			tmpl := b.template
 			g, ok := infos[tmpl]
 			if !ok {
 				g = &infoGroup{hosts: map[string]bool{}}

@@ -44,28 +44,30 @@ Targets outside the scope are dropped before nuclei runs, and results for out-of
 ```json
 {
   "tool": "raijin-scan",
-  "summary": "1 unique finding(s) (1 medium), 2 info group(s), 6 raw match(es) collapsed, 1 new since last run",
+  "summary": "1 findings (1 medium), 1 info groups, 6 raw matches, 1 new",
   "findings": [
     {
       "id": "git-config",
       "title": "Git Configuration - Detect",
       "severity": "medium",
-      "confidence": "matched",
       "hosts": ["127.0.0.1:18080", "localhost:18080"],
-      "hosts_count": 2,
       "evidence": "http://localhost:18080/.git/config",
-      "engine_ref": "nuclei:git-config",
-      "fingerprint": "0ea655078c0f38f9",
       "new": true
     }
   ],
   "groups": [{"id": "tech-detect", "count": 2, "examples": ["127.0.0.1:18080", "localhost:18080"], "variants": ["python", "simplehttp"]}],
-  "omitted": {"out_of_scope": 1},
-  "errors": [],
-  "next": [],
-  "budget": {"max_items": 20, "max_bytes": 8000, "truncated": false}
+  "omitted": {"out_of_scope": 1}
 }
 ```
+
+Fields an agent can rebuild are left out to save tokens, so no information is lost:
+
+- `hosts_count` appears only when it is larger than the hosts listed.
+- `confidence` appears only when it is not `matched`.
+- `omitted`, `errors` and `next` appear only when they are not empty.
+- `budget` appears only when something was cut.
+
+The nuclei template is the `id` up to the first `:`.
 
 What the reducer does:
 

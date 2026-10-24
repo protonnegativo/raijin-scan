@@ -47,8 +47,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	severity := fs.String("severity", "", "nuclei severities to run, e.g. critical,high")
 	rate := fs.Int("rate", 0, "requests per second (nuclei -rl)")
 	timeout := fs.Int("timeout", 0, "request timeout in seconds")
-	maxItems := fs.Int("max-items", 20, "maximum findings in the output")
-	maxBytes := fs.Int("max-bytes", 8000, "maximum size of the JSON output")
+	maxItems := fs.Int("max-items", 0, "maximum findings in the output (0 keeps all)")
+	maxBytes := fs.Int("max-bytes", reduce.Defaults().MaxBytes, "maximum size of the JSON output; cuts are counted in omitted")
+	rawPath := fs.String("raw", "", "file for nuclei's full JSONL output (default: a new file in the temp dir)")
 	includeInfo := fs.Bool("include-info", false, "report info-level matches as findings instead of groups")
 	statePath := fs.String("state", "", "state file; marks findings that are new since the last run")
 	format := fs.String("format", "json", "output format: json or table")
@@ -122,17 +123,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		res.Target = targetSummary(inScope, res.Omitted["out_of_scope"])
 
+		if *rawPath == "" {
+			f, err := os.CreateTemp("", "raijin-scan-*.jsonl")
+			if err != nil {
+				fmt.Fprintln(stderr, "raijin-scan:", err)
+				return 1
+			}
+			f.Close()
+			*rawPath = f.Name()
+		}
+		res.Raw = *rawPath
+
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 		defer stop()
 		var stderrTail string
 		events, stderrTail, err = nuclei.Run(ctx, inScope, nuclei.Options{
 			Binary: *bin, Templates: templates, Tags: *tags, Severity: *severity,
-			Rate: *rate, Timeout: *timeout, Extra: fs.Args(),
+			Rate: *rate, Timeout: *timeout, Extra: fs.Args(), RawPath: *rawPath,
 		})
 		switch {
 		case errors.Is(err, nuclei.ErrNotFound):
 			res.Errors = append(res.Errors, schema.Error{Kind: "missing_engine", Hint: "install nuclei (go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest) or pass --nuclei <path>"})
 			res.Summary = "nuclei not found, nothing scanned"
+			res.Raw = ""
 			write(stdout, &res, *format, *pretty)
 			return 2
 		case err != nil:
@@ -149,7 +162,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	opt.MaxBytes = *maxBytes
 	opt.IncludeInfo = *includeInfo
 	opt.InScope = sc.Allowed
-	findings, groups, omitted, allHosts := reduce.Reduce(events, opt)
+	findings, groups, omitted, allLocations := reduce.Reduce(events, opt)
 	res.Findings, res.Groups = findings, groups
 	for k, v := range omitted {
 		res.Omitted[k] += v
@@ -161,7 +174,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			res.Errors = append(res.Errors, schema.Error{Kind: "state_error", Hint: err.Error()})
 		} else {
-			newCount = st.Mark(res.Findings, allHosts)
+			newCount = st.Mark(res.Findings, allLocations)
 			if err := st.Save(*statePath); err != nil {
 				res.Errors = append(res.Errors, schema.Error{Kind: "state_error", Hint: err.Error()})
 			}
@@ -169,13 +182,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	res.Summary = summary(len(events), res, newCount)
-	if res.Omitted["budget"] > 0 {
+	if res.Omitted["findings"] > 0 {
 		res.Budget.Truncated = true
-		if *severity == "" {
-			res.Next = append(res.Next, "rerun with --severity critical,high to see only the top findings")
-		}
 	}
 	reduce.Fit(&res, *maxBytes)
+	if res.Budget.Truncated {
+		hint := "raise --max-bytes"
+		if src := res.Raw + *input; src != "" {
+			hint += " or read " + src + " for what was cut"
+		}
+		res.Next = append(res.Next, hint)
+	}
 	write(stdout, &res, *format, *pretty)
 	return 0
 }
@@ -252,10 +269,13 @@ func write(w io.Writer, res *schema.Result, format string, pretty bool) {
 			if f.New {
 				mark = " [new]"
 			}
-			fmt.Fprintf(w, "%-8s %-40s %3d host(s)%s\n         %s\n", strings.ToUpper(f.Severity), f.ID, f.HostsCount, mark, f.Evidence)
+			fmt.Fprintf(w, "%-8s %s (%d)%s\n", strings.ToUpper(f.Severity), f.ID, f.Count, mark)
+			for _, l := range f.Locations {
+				fmt.Fprintf(w, "         %s\n", l)
+			}
 		}
 		for _, g := range res.Groups {
-			fmt.Fprintf(w, "info     %-40s %3d host(s)\n", g.ID, g.Count)
+			fmt.Fprintf(w, "info     %s (%d) %s\n", g.ID, g.Count, strings.Join(g.Variants, ","))
 		}
 		for _, e := range res.Errors {
 			fmt.Fprintf(w, "error    %s: %s\n", e.Kind, e.Hint)

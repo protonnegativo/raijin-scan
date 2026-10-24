@@ -51,6 +51,7 @@ scenario() {
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" --pretty > "$o/raijin_pretty.json"
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" --format table > "$o/raijin_table.txt"
   echo; echo "## $name ($(wc -l < "$o/nuclei.jsonl") nuclei matches)"; echo
+  python3 "$HERE/verify.py" "$o/nuclei.jsonl" "$o/raijin.json"
   python3 "$HERE/count_tokens.py" \
     "nuclei -jsonl=$o/nuclei.jsonl" \
     "nuclei -jsonl -omit-raw=$o/nuclei_omitraw.jsonl" \

@@ -1,7 +1,9 @@
 // Package schema defines the Raijin Schema, the JSON shape every Raijin tool returns.
 //
-// Anything an agent can rebuild is left out of the JSON to save tokens: empty lists, the budget when
-// nothing was cut, a hosts_count equal to the hosts listed, and fields at their documented default.
+// Nothing the engine found is dropped silently: every finding and every location where it matched is
+// listed, and anything a budget cuts is counted in Omitted. What an agent can rebuild is left out of the
+// JSON to save tokens: empty lists, the budget when nothing was cut, a count equal to the locations
+// listed, and fields at their documented default.
 package schema
 
 import "encoding/json"
@@ -17,7 +19,9 @@ type Result struct {
 	Omitted  map[string]int `json:"omitted,omitempty"`
 	Errors   []Error        `json:"errors,omitempty"`
 	Next     []string       `json:"next,omitempty"`
-	Budget   Budget         `json:"budget"`
+	// Raw is the file with the engine's full output, for details the result leaves out.
+	Raw    string `json:"raw,omitempty"`
+	Budget Budget `json:"budget"`
 }
 
 // MarshalJSON writes the budget only when something was cut.
@@ -33,7 +37,7 @@ func (r Result) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// Finding is one deduplicated issue, collapsed across every host where it matched.
+// Finding is one deduplicated issue with every location where it matched.
 // The same tool and ID in two runs is the same finding.
 type Finding struct {
 	ID       string `json:"id"`
@@ -41,10 +45,12 @@ type Finding struct {
 	Severity string `json:"severity"`
 	// Confidence is "verified" or "heuristic"; empty means "matched".
 	Confidence string   `json:"confidence,omitempty"`
-	Hosts      []string `json:"hosts"`
-	// HostsCount is written only when it is larger than len(Hosts).
-	HostsCount int    `json:"hosts_count,omitempty"`
-	Evidence   string `json:"evidence"`
+	CVE        []string `json:"cve,omitempty"`
+	CVSS       float64  `json:"cvss,omitempty"`
+	// Locations are the exact places it matched, each with the values extracted there.
+	Locations []string `json:"locations"`
+	// Count is the number of locations; it is written only when the budget cut Locations.
+	Count int `json:"count,omitempty"`
 	// EngineRef is written only when the engine rule is not the ID's prefix before ':'.
 	EngineRef string `json:"engine_ref,omitempty"`
 	// Fingerprint is the internal key for --state; it is derived from the ID and not written.
@@ -52,22 +58,34 @@ type Finding struct {
 	New         bool   `json:"new,omitempty"`
 }
 
-// MarshalJSON leaves out hosts_count when every host is listed.
+// MarshalJSON leaves out count when every location is listed.
 func (f Finding) MarshalJSON() ([]byte, error) {
 	type plain Finding
 	p := plain(f)
-	if p.HostsCount <= len(p.Hosts) {
-		p.HostsCount = 0
+	if p.Count <= len(p.Locations) {
+		p.Count = 0
 	}
 	return json.Marshal(p)
 }
 
-// Group is something that repeats and is not worth a finding of its own (for example tech detection).
+// Group is info-level output collapsed per template: every variant listed matched every location listed.
+// A template whose variants matched different locations becomes one group per set of locations.
 type Group struct {
-	ID       string   `json:"id"`
-	Count    int      `json:"count"`
-	Examples []string `json:"examples,omitempty"`
-	Variants []string `json:"variants,omitempty"`
+	ID        string   `json:"id"`
+	Variants  []string `json:"variants,omitempty"`
+	Locations []string `json:"locations,omitempty"`
+	// Count is the number of locations; it is written only when the budget cut Locations.
+	Count int `json:"count,omitempty"`
+}
+
+// MarshalJSON leaves out count when every location is listed.
+func (g Group) MarshalJSON() ([]byte, error) {
+	type plain Group
+	p := plain(g)
+	if p.Count <= len(p.Locations) {
+		p.Count = 0
+	}
+	return json.Marshal(p)
 }
 
 // Error is a problem during the run, with a hint about what to try next.

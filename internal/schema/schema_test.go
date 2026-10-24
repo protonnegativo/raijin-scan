@@ -9,8 +9,8 @@ import (
 func TestDerivableFieldsAreLeftOut(t *testing.T) {
 	res := Result{
 		Tool:     "raijin-scan",
-		Findings: []Finding{{ID: "git-config", Hosts: []string{"a", "b"}, HostsCount: 2, Fingerprint: "fp"}},
-		Groups:   []Group{{ID: "tech-detect", Count: 4}},
+		Findings: []Finding{{ID: "git-config", Locations: []string{"https://a/.git/config", "https://b/.git/config"}, Count: 2, Fingerprint: "fp"}},
+		Groups:   []Group{{ID: "tech-detect", Locations: []string{"https://a"}, Count: 1}},
 		Omitted:  map[string]int{},
 		Errors:   []Error{},
 		Next:     []string{},
@@ -20,23 +20,28 @@ func TestDerivableFieldsAreLeftOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, k := range []string{"fingerprint", "hosts_count", "confidence", "engine_ref", "omitted", "errors", "next", "budget", "examples", "null"} {
-		if strings.Contains(string(b), k) {
+	for _, k := range []string{"fingerprint", "count", "confidence", "engine_ref", "cve", "cvss", "omitted", "errors", "next", "raw", "budget", "variants"} {
+		if strings.Contains(string(b), `"`+k+`"`) {
 			t.Errorf("%s should be left out: %s", k, b)
 		}
+	}
+	if strings.Contains(string(b), "null") {
+		t.Errorf("no null values: %s", b)
 	}
 }
 
 func TestCountAndBudgetAppearWhenSomethingIsCut(t *testing.T) {
 	res := Result{
-		Findings: []Finding{{ID: "git-config", Hosts: []string{"a"}, HostsCount: 7}},
+		Findings: []Finding{{ID: "git-config", Locations: []string{"https://a/.git/config"}, Count: 7}},
+		Groups:   []Group{{ID: "tech-detect", Count: 4}},
 		Budget:   Budget{MaxItems: 20, MaxBytes: 8000, Truncated: true},
 	}
 	b, _ := json.Marshal(res)
-	if !strings.Contains(string(b), `"hosts_count":7`) || !strings.Contains(string(b), `"budget":{"max_items":20,"max_bytes":8000,"truncated":true}`) {
-		t.Errorf("hosts_count and budget must be written when something was cut: %s", b)
+	s := string(b)
+	if !strings.Contains(s, `"locations":["https://a/.git/config"],"count":7`) || !strings.Contains(s, `{"id":"tech-detect","count":4}`) {
+		t.Errorf("count must be written when locations were cut: %s", s)
 	}
-	if strings.Count(string(b), "budget") != 1 {
-		t.Errorf("budget written twice: %s", b)
+	if !strings.Contains(s, `"budget":{"max_items":20,"max_bytes":8000,"truncated":true}`) || strings.Count(s, "budget") != 1 {
+		t.Errorf("budget must be written once when something was cut: %s", s)
 	}
 }

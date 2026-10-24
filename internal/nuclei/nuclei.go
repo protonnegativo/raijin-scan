@@ -26,10 +26,45 @@ type Event struct {
 	ExtractedResults []string `json:"extracted-results"`
 	Type             string   `json:"type"`
 	Info             struct {
-		Name     string   `json:"name"`
-		Severity string   `json:"severity"`
-		Tags     []string `json:"tags"`
+		Name           string   `json:"name"`
+		Severity       string   `json:"severity"`
+		Tags           []string `json:"tags"`
+		Classification struct {
+			CVEID     StringList      `json:"cve-id"`
+			CVSSScore json.RawMessage `json:"cvss-score"`
+		} `json:"classification"`
 	} `json:"info"`
+}
+
+// StringList decodes a JSON array of strings, a single string or null. Anything else decodes as empty,
+// so an odd value in template metadata never drops the event.
+type StringList []string
+
+func (l *StringList) UnmarshalJSON(b []byte) error {
+	var many []string
+	if json.Unmarshal(b, &many) == nil {
+		*l = many
+		return nil
+	}
+	var one string
+	if json.Unmarshal(b, &one) == nil && one != "" {
+		*l = []string{one}
+	}
+	return nil
+}
+
+// CVSS returns the event's CVSS score, or 0 if it has none. nuclei writes it as a number or a string.
+func (e Event) CVSS() float64 {
+	b := e.Info.Classification.CVSSScore
+	var f float64
+	if json.Unmarshal(b, &f) == nil {
+		return f
+	}
+	var s string
+	if json.Unmarshal(b, &s) == nil {
+		fmt.Sscan(s, &f)
+	}
+	return f
 }
 
 // Options are the nuclei settings Raijin passes through.
@@ -41,6 +76,8 @@ type Options struct {
 	Rate      int
 	Timeout   int
 	Extra     []string
+	// RawPath, if set, receives nuclei's JSONL output unchanged.
+	RawPath string
 }
 
 // Run scans the targets and returns every event, plus the last stderr lines if nuclei failed.
@@ -72,10 +109,19 @@ func Run(ctx context.Context, targets []string, opt Options) ([]Event, string, e
 	if err != nil {
 		return nil, "", err
 	}
+	var r io.Reader = stdout
+	if opt.RawPath != "" {
+		raw, err := os.Create(opt.RawPath)
+		if err != nil {
+			return nil, "", err
+		}
+		defer raw.Close()
+		r = io.TeeReader(stdout, raw)
+	}
 	if err := cmd.Start(); err != nil {
 		return nil, "", err
 	}
-	events, parseErr := Parse(stdout)
+	events, parseErr := Parse(r)
 	waitErr := cmd.Wait()
 	if parseErr != nil {
 		return events, tail(stderr.String(), 3), parseErr

@@ -10,7 +10,7 @@ import (
 	"github.com/protonnegativo/raijin-scan/internal/schema"
 )
 
-// State maps a finding fingerprint to the hosts it was seen on.
+// State maps a finding fingerprint to the locations it was seen at.
 type State struct {
 	Seen map[string][]string `json:"seen"`
 }
@@ -34,7 +34,7 @@ func Load(path string) (*State, error) {
 	return s, nil
 }
 
-// Mark flags findings that are new, or that appeared on a host not seen before, and records them. It returns how many are new.
+// Mark flags findings that are new, or that appeared at a location not seen before, and records them. It returns how many are new.
 func (s *State) Mark(findings []schema.Finding, allHosts map[string][]string) int {
 	n := 0
 	for i := range findings {

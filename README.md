@@ -44,39 +44,58 @@ Targets outside the scope are dropped before nuclei runs, and results for out-of
 ```json
 {
   "tool": "raijin-scan",
-  "summary": "1 findings (1 medium), 1 info groups, 6 raw matches, 1 new",
+  "version": "0.1.0",
+  "target": "2 target(s)",
+  "summary": "2 findings (1 high, 1 medium), 0 info groups, 4 raw matches",
   "findings": [
+    {
+      "id": "laravel-env",
+      "title": "Laravel - Sensitive Information Disclosure",
+      "severity": "high",
+      "cvss": 8.3,
+      "locations": ["http://127.0.0.1:18081/.env", "http://localhost:18081/.env"]
+    },
     {
       "id": "git-config",
       "title": "Git Configuration - Detect",
       "severity": "medium",
-      "hosts": ["127.0.0.1:18080", "localhost:18080"],
-      "evidence": "http://localhost:18080/.git/config",
-      "new": true
+      "cvss": 5.3,
+      "locations": ["http://127.0.0.1:18081/.git/config", "http://localhost:18081/.git/config"]
     }
   ],
-  "groups": [{"id": "tech-detect", "count": 2, "examples": ["127.0.0.1:18080", "localhost:18080"], "variants": ["python", "simplehttp"]}],
-  "omitted": {"out_of_scope": 1}
+  "groups": [],
+  "raw": "/tmp/raijin-scan-3172893561.jsonl"
 }
 ```
 
-Fields an agent can rebuild are left out to save tokens, so no information is lost:
+That is a real run (`-t http/exposures/configs/git-config.yaml -t http/exposures/configs/laravel-env.yaml` against a local lab), pretty-printed here and with the `raw` path shortened; the tool writes it as one line.
 
-- `hosts_count` appears only when it is larger than the hosts listed.
+**Nothing nuclei found is dropped silently.** It runs every severity, like nuclei does by default. Every finding and every location where it matched is in the output. Only exact repeats collapse, and they are counted in `omitted.duplicates`.
+
+What the reducer does:
+
+- **One finding per template and matcher.** `locations` lists every URL where it matched, each with the values extracted there. Two different URLs on the same host are two locations.
+- **CVE and CVSS** are included when the template has them. A CVE that is already the `id` is not repeated.
+- **Info-level matches become `groups`**, one per template, unless you pass `--include-info`. Variants (for example the missing headers) that matched the same locations share one group. A variant that matched other locations gets its own group, so every variant/location pair is kept.
+- **Ranking:** severity first, then the number of locations.
+- **`raw`** is nuclei's full JSONL, saved to disk. It holds the description, references, the `curl` command to reproduce, and timestamps, and reading it costs no tokens until the agent opens it. `--raw <file>` picks the path.
+- **Budget:** `--max-bytes` (16,000 by default) keeps the output bounded on huge scans. It cuts in this order until the JSON fits:
+  1. info group locations;
+  2. info groups;
+  3. the locations of the lowest-ranked findings, each keeping one location plus its `count`;
+  4. the lowest-ranked findings.
+
+  Every cut is counted in `omitted`, `budget.truncated` is set, and `next` points to the raw file. `--max-items` caps the number of findings (0, the default, keeps all).
+- **Errors** say what to try next. If nuclei is missing, the exit code is 2.
+
+Fields an agent can rebuild are left out to save tokens:
+
+- `count` appears only when the budget cut `locations`.
 - `confidence` appears only when it is not `matched`.
 - `omitted`, `errors` and `next` appear only when they are not empty.
 - `budget` appears only when something was cut.
 
 The nuclei template is the `id` up to the first `:`.
-
-What the reducer does:
-
-- **One finding per template and matcher**, across every host. The first 5 hosts are listed; `hosts_count` has the total.
-- **Info-level matches become one `group` per template** (host count, 3 examples, and the matcher names in `variants`) unless you pass `--include-info`.
-- **Evidence is the matched URL, the matcher and up to 3 extracted values**, cut at 300 characters. It never includes the request or response.
-- **Ranking:** severity first, then the number of hosts.
-- **Budget:** `--max-items` caps the findings; `--max-bytes` shrinks host examples, then groups, then the lowest-ranked findings until the JSON fits. Whatever was cut is counted in `omitted` and `budget.truncated` is set.
-- **Errors** say what to try next. If nuclei is missing, the exit code is 2.
 
 The JSON is compact (one line) by default because indentation costs about 30% more tokens; `--pretty` indents it (the example above is pretty-printed). `--format table` prints a short human view of the same result.
 
@@ -90,8 +109,9 @@ The banner above is **off by default**, so normal runs stay small. `--banner` pr
 | `-u` / `-l` / `--input` | | one target (repeatable) / target file / existing nuclei JSONL |
 | `-t`, `--tags`, `--severity` | | passed to nuclei |
 | `--rate`, `--timeout` | | nuclei `-rl` / `-timeout` |
-| `--max-items` | 20 | max findings |
-| `--max-bytes` | 8000 | max JSON size |
+| `--max-items` | 0 | max findings (0 keeps all) |
+| `--max-bytes` | 16000 | max JSON size; cuts are counted in `omitted` |
+| `--raw` | temp file | where to save nuclei's full JSONL |
 | `--include-info` | false | info matches as findings, not groups |
 | `--state` | | state file for new-since-last-run |
 | `--format` | json | `json` or `table` |

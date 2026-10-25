@@ -155,6 +155,10 @@ The banner above is **off by default**, so normal runs stay small. `--banner` pr
 | `--nuclei` | nuclei | path to the binary |
 | `--banner` | false | print the banner to stderr |
 
+## Engine versions
+
+The nuclei version this tool is tested with is in [engines.json](engines.json). If the installed nuclei has another major version or is older, `errors` has an `engine_version` hint with the install command. If nuclei's output lacks the fields the reducer needs (`template-id`, `matched-at`), `errors` has an `engine_format` hint. Neither stops the run. A weekly GitHub Actions job runs the benchmark with the latest nuclei and opens a PR to bump engines.json when it passes, or an issue when it breaks.
+
 ## Development
 
 ```bash

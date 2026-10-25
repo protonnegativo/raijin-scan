@@ -94,13 +94,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var events []nuclei.Event
+	var stats nuclei.Stats
 	if *input != "" {
 		f, err := os.Open(*input)
 		if err != nil {
 			fmt.Fprintln(stderr, "raijin-scan:", err)
 			return 1
 		}
-		events, err = nuclei.Parse(f)
+		events, stats, err = nuclei.ParseStats(f)
 		f.Close()
 		if err != nil {
 			fmt.Fprintln(stderr, "raijin-scan:", err)
@@ -155,8 +156,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 		defer stop()
+		if hint := nuclei.VersionHint(ctx, *bin); hint != "" {
+			res.Errors = append(res.Errors, schema.Error{Kind: "engine_version", Hint: hint})
+		}
 		var stderrTail string
-		events, stderrTail, err = nuclei.Run(ctx, inScope, nuclei.Options{
+		events, stats, stderrTail, err = nuclei.Run(ctx, inScope, nuclei.Options{
 			Binary: *bin, Templates: templates, Tags: *tags, Severity: *severity,
 			Rate: *rate, Timeout: *timeout, Extra: fs.Args(), RawPath: *rawPath,
 		})
@@ -174,6 +178,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 			}
 			res.Errors = append(res.Errors, schema.Error{Kind: "engine_error", Hint: hint})
 		}
+	}
+
+	if hint := stats.FormatHint(res.Raw + *input); hint != "" {
+		res.Errors = append(res.Errors, schema.Error{Kind: "engine_format", Hint: hint})
+	}
+	if stats.Dropped > 0 {
+		res.Omitted["unparsed"] += stats.Dropped
 	}
 
 	opt := reduce.Defaults()

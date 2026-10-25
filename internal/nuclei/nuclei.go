@@ -80,25 +80,45 @@ type Options struct {
 	RawPath string
 }
 
+// Stats counts the output lines Parse saw and those without the fields Raijin needs.
+type Stats struct {
+	Lines int // non-empty lines
+	Bad   int // lines that are not JSON or have no template-id or matched-at
+	// Dropped are the bad lines that did not become an event (not JSON, or no template-id).
+	Dropped int
+}
+
+// FormatHint returns a hint when some results lacked the essential fields, or "".
+func (s Stats) FormatHint(raw string) string {
+	if s.Bad == 0 {
+		return ""
+	}
+	h := fmt.Sprintf("%d of %d nuclei results had no template-id or matched-at; the engine's output format may have changed", s.Bad, s.Lines)
+	if raw != "" {
+		h += ". Read " + raw + " for the full output"
+	}
+	return h
+}
+
 // Run scans the targets and returns every event, plus the last stderr lines if nuclei failed.
-func Run(ctx context.Context, targets []string, opt Options) ([]Event, string, error) {
+func Run(ctx context.Context, targets []string, opt Options) ([]Event, Stats, string, error) {
 	bin := opt.Binary
 	if bin == "" {
 		bin = "nuclei"
 	}
 	path, err := exec.LookPath(bin)
 	if err != nil {
-		return nil, "", ErrNotFound
+		return nil, Stats{}, "", ErrNotFound
 	}
 
 	list, err := os.CreateTemp("", "raijin-scan-targets-*.txt")
 	if err != nil {
-		return nil, "", err
+		return nil, Stats{}, "", err
 	}
 	defer os.Remove(list.Name())
 	if _, err := io.WriteString(list, strings.Join(targets, "\n")+"\n"); err != nil {
 		list.Close()
-		return nil, "", err
+		return nil, Stats{}, "", err
 	}
 	list.Close()
 
@@ -107,29 +127,29 @@ func Run(ctx context.Context, targets []string, opt Options) ([]Event, string, e
 	cmd.Stderr = &stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, "", err
+		return nil, Stats{}, "", err
 	}
 	var r io.Reader = stdout
 	if opt.RawPath != "" {
 		raw, err := os.Create(opt.RawPath)
 		if err != nil {
-			return nil, "", err
+			return nil, Stats{}, "", err
 		}
 		defer raw.Close()
 		r = io.TeeReader(stdout, raw)
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, "", err
+		return nil, Stats{}, "", err
 	}
-	events, parseErr := Parse(r)
+	events, st, parseErr := ParseStats(r)
 	waitErr := cmd.Wait()
 	if parseErr != nil {
-		return events, tail(stderr.String(), 3), parseErr
+		return events, st, tail(stderr.String(), 3), parseErr
 	}
 	if waitErr != nil {
-		return events, tail(stderr.String(), 3), fmt.Errorf("nuclei exited: %w", waitErr)
+		return events, st, tail(stderr.String(), 3), fmt.Errorf("nuclei exited: %w", waitErr)
 	}
-	return events, "", nil
+	return events, st, "", nil
 }
 
 // Args builds the nuclei command line.
@@ -155,24 +175,34 @@ func Args(listFile string, opt Options) []string {
 
 // Parse reads nuclei JSONL. Lines that are not JSON objects are skipped.
 func Parse(r io.Reader) ([]Event, error) {
+	events, _, err := ParseStats(r)
+	return events, err
+}
+
+// ParseStats is Parse, and also counts the lines without the fields Raijin needs.
+func ParseStats(r io.Reader) ([]Event, Stats, error) {
 	var events []Event
+	var st Stats
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
 	for sc.Scan() {
 		line := bytes.TrimSpace(sc.Bytes())
-		if len(line) == 0 || line[0] != '{' {
+		if len(line) == 0 {
 			continue
 		}
+		st.Lines++
 		var ev Event
-		if err := json.Unmarshal(line, &ev); err != nil {
+		if line[0] != '{' || json.Unmarshal(line, &ev) != nil || ev.TemplateID == "" {
+			st.Bad++
+			st.Dropped++
 			continue
 		}
-		if ev.TemplateID == "" {
-			continue
+		if ev.MatchedAt == "" {
+			st.Bad++ // kept: the reducer still lists it, under its host
 		}
 		events = append(events, ev)
 	}
-	return events, sc.Err()
+	return events, st, sc.Err()
 }
 
 func tail(s string, n int) string {

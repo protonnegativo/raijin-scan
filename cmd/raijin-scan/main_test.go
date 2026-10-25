@@ -104,3 +104,35 @@ func TestScopeAloneScansWhatTheScopeNames(t *testing.T) {
 		t.Errorf("next = %v", res.Next)
 	}
 }
+
+func TestEngineVersionAndFormat(t *testing.T) {
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "nuclei")
+	// an old nuclei whose JSONL renamed matched-at
+	script := "#!/bin/sh\nif [ \"$1\" = -version ]; then echo '[INF] Nuclei Engine Version: v2.9.15' >&2; exit 0; fi\n" +
+		"echo '{\"template-id\":\"git-config\",\"host\":\"a.example.com\",\"matched_at\":\"https://a.example.com/.git/config\"}'\n"
+	if err := os.WriteFile(fake, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	code := run([]string{"--scope", scopeFile(t), "--nuclei", fake, "--raw", filepath.Join(dir, "raw.jsonl"), "-u", "https://a.example.com"}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	var v struct {
+		Errors []struct{ Kind, Hint string }
+	}
+	if err := json.Unmarshal(out.Bytes(), &v); err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[string]string{}
+	for _, e := range v.Errors {
+		kinds[e.Kind] = e.Hint
+	}
+	if !strings.HasPrefix(kinds["engine_version"], "nuclei 2.9.15 is not the tested ") {
+		t.Errorf("engine_version: %q", kinds["engine_version"])
+	}
+	if !strings.HasPrefix(kinds["engine_format"], "1 of 1 nuclei results") {
+		t.Errorf("engine_format: %q", kinds["engine_format"])
+	}
+}

@@ -21,8 +21,6 @@ import (
 	"github.com/protonnegativo/raijin-scan/internal/state"
 )
 
-const version = "0.1.0"
-
 type multi []string
 
 func (m *multi) String() string     { return strings.Join(*m, ",") }
@@ -66,10 +64,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *showBanner {
-		banner.Write(stderr, "raijin-scan", version, useColor(stderr))
+		banner.Write(stderr, "raijin-scan", strings.TrimPrefix(version, "v"), useColor(stderr))
 	}
 	if *showVersion {
-		fmt.Fprintln(stdout, "raijin-scan", version)
+		fmt.Fprintln(stdout, versionLine())
 		return 0
 	}
 	if *scopeFile == "" {
@@ -166,7 +164,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		})
 		switch {
 		case errors.Is(err, nuclei.ErrNotFound):
-			res.Errors = append(res.Errors, schema.Error{Kind: "missing_engine", Hint: "install nuclei (go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest) or pass --nuclei <path>"})
+			res.Errors = append(res.Errors, schema.Error{Kind: "missing_engine", Hint: "install nuclei (go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest) or pass --nuclei <path>, or run raijin-mcp update"})
 			res.Summary = "nuclei not found, nothing scanned"
 			res.Raw = ""
 			write(stdout, &res, *format, *pretty)

@@ -84,6 +84,6 @@ func VersionHint(ctx context.Context, bin string) string {
 	if !ok || !Untested(installed, tested) {
 		return ""
 	}
-	return fmt.Sprintf("nuclei %d.%d.%d is not the tested %s; results may be incomplete. Install the tested version: go install %s@v%s",
+	return fmt.Sprintf("nuclei %d.%d.%d is not the tested %s; results may be incomplete. Install the tested version: go install %s@v%s, or run raijin-mcp update",
 		installed[0], installed[1], installed[2], e.Version, e.Go, e.Version)
 }

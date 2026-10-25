@@ -13,7 +13,7 @@ permissions:
 jobs:
   drift:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     env:
       GH_TOKEN: ${{ github.token }}
       WANT: ${{ inputs.nuclei || 'latest' }}
@@ -40,7 +40,7 @@ jobs:
       - run: pip install tiktoken
       - name: live benchmark
         run: |
-          LIVE=1 PY=python3 TPL="$HOME/nuclei-templates" bench/run.sh "$RUNNER_TEMP/live" | tee "$RUNNER_TEMP/live.log"
+          LIVE=1 RATE=300 PY=python3 TPL="$HOME/nuclei-templates" bench/run.sh "$RUNNER_TEMP/live" | tee "$RUNNER_TEMP/live.log"
           grep -E 'nuclei events|MISSING' "$RUNNER_TEMP/live.log" > "$RUNNER_TEMP/verify.txt" || true
           bad=0
           if grep -q MISSING "$RUNNER_TEMP/verify.txt" || grep -qE 'events, [1-9][0-9]* \(finding' "$RUNNER_TEMP/verify.txt"; then bad=1; fi

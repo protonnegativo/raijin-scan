@@ -57,9 +57,9 @@ scenario() {
   local o=$W/$name
   mkdir -p "$o"
   if [ -n "$LIVE" ]; then
-    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -nc -rl 30 > "$o/text.txt" 2> "$o/text_stderr.txt")
-    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -rl 30 > "$o/nuclei.jsonl")
-    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -omit-raw -rl 30 > "$o/nuclei_omitraw.jsonl")
+    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -nc -rl "${RATE:-30}" > "$o/text.txt" 2> "$o/text_stderr.txt")
+    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -rl "${RATE:-30}" > "$o/nuclei.jsonl")
+    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -omit-raw -rl "${RATE:-30}" > "$o/nuclei_omitraw.jsonl")
   else
     cp "$HERE/fixtures/$name"/* "$o/"
   fi

@@ -35,7 +35,7 @@ jobs:
           echo "nuclei $v (tested $(jq -r .nuclei.version engines.json))"
           echo "nuclei=$v" >> "$GITHUB_OUTPUT"
       - name: install templates
-        run: nuclei -update-templates -duc -ud "$HOME/nuclei-templates"
+        run: git clone --depth 1 https://github.com/projectdiscovery/nuclei-templates "$HOME/nuclei-templates"
       - run: pip install tiktoken
       - name: live benchmark
         run: |

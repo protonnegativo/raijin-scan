@@ -34,7 +34,8 @@ lab() {
     local p=$((PORT0 + i - 1))
     echo "<html><head><title>site$i</title></head></html>" > "$d/site$i/index.html"
     if ss -ltn | grep -q ":$p "; then echo "port $p is busy; free it first" >&2; exit 1; fi
-    (cd "$d/site$i" && python3 -m http.server "$p" --bind 127.0.0.1 >/dev/null 2>&1 & echo $! >> "$W/pids")
+    python3 -m http.server "$p" --bind 127.0.0.1 -d "$d/site$i" >/dev/null 2>&1 &
+    echo $! >> "$W/pids"
   done
   : > "$W/targets.txt"
   for i in 1 2 3 4 5; do printf 'http://127.0.0.1:%s\nhttp://localhost:%s\n' $((PORT0 + i - 1)) $((PORT0 + i - 1)) >> "$W/targets.txt"; done

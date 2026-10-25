@@ -49,7 +49,9 @@ Against nuclei's text output, the gap is smaller: 8.5× on the broad scan and 2.
 go install github.com/protonnegativo/raijin-scan/cmd/raijin-scan@latest
 ```
 
-You also need `nuclei` on `PATH`, or pass `--nuclei <path>`.
+That installs the latest release. You also need `nuclei` on `PATH`, or pass `--nuclei <path>`.
+
+**Versions.** Releases are tagged automatically on every change and every passing engine update. `raijin-scan --version` shows the release and the tested nuclei version, e.g. `raijin-scan v0.1.3 (tested with nuclei 3.3.9)`. `raijin-mcp update` updates every Raijin tool at once.
 
 ## Usage
 
@@ -157,7 +159,7 @@ The banner above is **off by default**, so normal runs stay small. `--banner` pr
 
 ## Engine versions
 
-The nuclei version this tool is tested with is in [engines.json](engines.json). If the installed nuclei has another major version or is older, `errors` has an `engine_version` hint with the install command. If nuclei's output lacks the fields the reducer needs (`template-id`, `matched-at`), `errors` has an `engine_format` hint. Neither stops the run. A weekly GitHub Actions job runs the benchmark with the latest nuclei and opens a PR to bump engines.json when it passes, or an issue when it breaks.
+The nuclei version this tool is tested with is in [engines.json](engines.json). If the installed nuclei has another major version or is older, `errors` has an `engine_version` hint with the install command. If nuclei's output lacks the fields the reducer needs (`template-id`, `matched-at`), `errors` has an `engine_format` hint. Neither stops the run. A weekly GitHub Actions job runs the benchmark with the latest nuclei and commits the bump to engines.json and tags a release when it passes, or an issue when it breaks.
 
 ## Development
 

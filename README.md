@@ -54,6 +54,7 @@ You also need `nuclei` on `PATH`, or pass `--nuclei <path>`.
 ## Usage
 
 ```bash
+raijin-scan --scope scope.txt                                  # scan every host the scope names
 raijin-scan --scope scope.txt -l targets.txt -t http/exposures/ --max-items 10
 raijin-scan --scope scope.txt -u https://app.example.com --severity critical,high
 raijin-scan --scope scope.txt --input nuclei-results.jsonl     # reduce output you already have
@@ -69,6 +70,8 @@ example.com
 10.0.0.0/24
 !admin.example.com
 ```
+
+With no `-u`, `-l` or `--input`, raijin-scan scans what the scope names: every domain, every IP, and every address of ranges up to a /24, minus exclusions. A wildcard names no host and a larger range is too big to sweep blindly, so for each one `next` gives the command that enumerates it first (`raijin-subs` or `raijin-ports`).
 
 Targets outside the scope are dropped before nuclei runs, and results for out-of-scope hosts (for example after a redirect) are dropped from the output. Both are counted in `omitted.out_of_scope`.
 
@@ -139,7 +142,7 @@ The banner above is **off by default**, so normal runs stay small. `--banner` pr
 | Flag | Default | |
 |---|---|---|
 | `--scope` | (required) | scope file |
-| `-u` / `-l` / `--input` | | one target (repeatable) / target file / existing nuclei JSONL |
+| `-u` / `-l` / `--input` | every host the scope names | one target (repeatable) / target file / existing nuclei JSONL |
 | `-t`, `--tags`, `--severity` | | passed to nuclei |
 | `--rate`, `--timeout` | | nuclei `-rl` / `-timeout` |
 | `--max-items` | 0 | max findings (0 keeps all) |

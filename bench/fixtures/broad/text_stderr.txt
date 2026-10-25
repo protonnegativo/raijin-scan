@@ -1,0 +1,19 @@
+
+                     __     _
+   ____  __  _______/ /__  (_)
+  / __ \/ / / / ___/ / _ \/ /
+ / / / / /_/ / /__/ /  __/ /
+/_/ /_/\__,_/\___/_/\___/_/   v3.3.9
+
+		projectdiscovery.io
+
+[WRN] Found 4 templates with runtime error (use -validate flag for further examination)
+[INF] Current nuclei version: v3.3.9 (outdated)
+[INF] Current nuclei-templates version: v10.5.1 (latest)
+[WRN] Scan results upload to cloud is disabled.
+[INF] New templates added in latest release: 68
+[INF] Templates loaded for current scan: 2852
+[INF] Executing 2852 signed templates from projectdiscovery/nuclei-templates
+[INF] Targets loaded for current scan: 10
+[INF] Templates clustered: 1159 (Reduced 11080 Requests)
+[INF] Using Interactsh Server: oast.pro

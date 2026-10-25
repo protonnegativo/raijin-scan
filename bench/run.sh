@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # Reproducible token benchmark: nuclei output vs raijin-scan output on the same local lab.
 #
-# usage: bench/run.sh <nuclei-templates dir> [workdir]
-# needs: nuclei, python3 with tiktoken (pip install tiktoken), go
+# usage: bench/run.sh [workdir]
+#   By default it replays the nuclei output committed in bench/fixtures (no nuclei needed).
+#   LIVE=1 TPL=<nuclei-templates dir> runs nuclei on the local lab instead (TPL defaults to
+#   ~/nuclei-templates); PORT0 is the first lab port (default 18081).
+# needs: python3 with tiktoken (pip install tiktoken), go; nuclei for LIVE. PY picks the python.
 # optional: ANTHROPIC_API_KEY + pip install anthropic for exact Claude token counts
 set -euo pipefail
 
-TPL=${1:?usage: bench/run.sh <nuclei-templates dir> [workdir]}
-W=${2:-$(mktemp -d)}
+LIVE=${LIVE:-}
+TPL=${TPL:-$HOME/nuclei-templates}
+PY=${PY:-python3}
+PORT0=${PORT0:-18081}
+W=${1:-$(mktemp -d)}
 HERE=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "$W"
 echo "workdir: $W"
@@ -25,17 +31,23 @@ lab() {
   printf 'User-agent: *\nDisallow: /admin\nDisallow: /backup\n' > "$d/site4/robots.txt"
   printf '12\n\ndir\n' > "$d/site4/.svn/entries"
   for i in 1 2 3 4 5; do
+    local p=$((PORT0 + i - 1))
     echo "<html><head><title>site$i</title></head></html>" > "$d/site$i/index.html"
-    if ss -ltn | grep -q ":1808$i "; then echo "port 1808$i is busy; free it first" >&2; exit 1; fi
-    (cd "$d/site$i" && python3 -m http.server "1808$i" --bind 127.0.0.1 >/dev/null 2>&1 & echo $! >> "$W/pids")
+    if ss -ltn | grep -q ":$p "; then echo "port $p is busy; free it first" >&2; exit 1; fi
+    (cd "$d/site$i" && python3 -m http.server "$p" --bind 127.0.0.1 >/dev/null 2>&1 & echo $! >> "$W/pids")
   done
   : > "$W/targets.txt"
-  for i in 1 2 3 4 5; do printf 'http://127.0.0.1:1808%s\nhttp://localhost:1808%s\n' "$i" "$i" >> "$W/targets.txt"; done
+  for i in 1 2 3 4 5; do printf 'http://127.0.0.1:%s\nhttp://localhost:%s\n' $((PORT0 + i - 1)) $((PORT0 + i - 1)) >> "$W/targets.txt"; done
   printf '127.0.0.1\nlocalhost\n' > "$W/scope.txt"
   sleep 1
 }
 trap '[ -f "$W/pids" ] && xargs kill < "$W/pids" 2>/dev/null || true' EXIT
-lab
+if [ -n "$LIVE" ]; then
+  lab
+  nuclei -version -duc 2>&1 | grep -i version || true
+else
+  printf '127.0.0.1\nlocalhost\n' > "$W/scope.txt"
+fi
 
 (cd "$HERE/.." && go build -o "$W/raijin-scan" ./cmd/raijin-scan)
 
@@ -43,16 +55,20 @@ scenario() {
   local name=$1; shift
   local o=$W/$name
   mkdir -p "$o"
-  (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -nc -rl 30 > "$o/text.txt" 2> "$o/text_stderr.txt")
-  (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -rl 30 > "$o/nuclei.jsonl")
-  (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -omit-raw -rl 30 > "$o/nuclei_omitraw.jsonl")
+  if [ -n "$LIVE" ]; then
+    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -nc -rl 30 > "$o/text.txt" 2> "$o/text_stderr.txt")
+    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -rl 30 > "$o/nuclei.jsonl")
+    (cd "$TPL" && nuclei -l "$W/targets.txt" "$@" -duc -jsonl -silent -omit-raw -rl 30 > "$o/nuclei_omitraw.jsonl")
+  else
+    cp "$HERE/fixtures/$name"/* "$o/"
+  fi
   # raijin-scan reduces the same JSONL nuclei produced, so both sides see the same matches.
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" > "$o/raijin.json"
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" --pretty > "$o/raijin_pretty.json"
   "$W/raijin-scan" --scope "$W/scope.txt" --input "$o/nuclei.jsonl" --format table > "$o/raijin_table.txt"
   echo; echo "## $name ($(wc -l < "$o/nuclei.jsonl") nuclei matches)"; echo
-  python3 "$HERE/verify.py" "$o/nuclei.jsonl" "$o/raijin.json"
-  python3 "$HERE/count_tokens.py" \
+  "$PY" "$HERE/verify.py" "$o/nuclei.jsonl" "$o/raijin.json"
+  "$PY" "$HERE/count_tokens.py" \
     "nuclei -jsonl=$o/nuclei.jsonl" \
     "nuclei -jsonl -omit-raw=$o/nuclei_omitraw.jsonl" \
     "nuclei text (stdout+stderr)=$o/text.txt+$o/text_stderr.txt" \

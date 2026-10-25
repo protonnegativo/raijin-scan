@@ -2,7 +2,7 @@
 
 How many tokens does an AI agent spend reading the result of a scan, and does it lose anything? This benchmark runs nuclei on a local lab, counts the tokens in each output shape, and checks that every nuclei match is in the raijin-scan output.
 
-Reproduce: `bench/run.sh ~/nuclei-templates`.
+Reproduce: `LIVE=1 TPL=~/nuclei-templates bench/run.sh`. Without `LIVE`, it replays the nuclei output saved in `bench/fixtures`.
 
 ## Setup
 

@@ -1,0 +1,30 @@
+[codeigniter-env] [http] [high] http://127.0.0.1:19000/.env [paths="/.env"]
+[codeigniter-env] [http] [high] http://localhost:19000/.env [paths="/.env"]
+[laravel-env] [http] [high] http://localhost:19000/.env [paths="/.env"]
+[swagger-api] [http] [info] http://127.0.0.1:19002/swagger.json [paths="/swagger.json"]
+[laravel-env] [http] [high] http://127.0.0.1:19000/.env [paths="/.env"]
+[swagger-api] [http] [info] http://localhost:19002/swagger.json [paths="/swagger.json"]
+[git-config] [http] [medium] http://localhost:19000/.git/config
+[git-config] [http] [medium] http://127.0.0.1:19000/.git/config
+[openapi] [http] [info] http://127.0.0.1:19002/openapi.json
+[openapi] [http] [info] http://localhost:19002/openapi.json
+[tech-detect:simplehttp] [http] [info] http://127.0.0.1:19003
+[tech-detect:python] [http] [info] http://127.0.0.1:19003
+[tech-detect:simplehttp] [http] [info] http://localhost:19003
+[tech-detect:python] [http] [info] http://localhost:19003
+[tech-detect:simplehttp] [http] [info] http://127.0.0.1:19000
+[tech-detect:python] [http] [info] http://127.0.0.1:19000
+[tech-detect:simplehttp] [http] [info] http://localhost:19002
+[tech-detect:python] [http] [info] http://localhost:19002
+[tech-detect:simplehttp] [http] [info] http://localhost:19004
+[tech-detect:python] [http] [info] http://localhost:19004
+[tech-detect:simplehttp] [http] [info] http://127.0.0.1:19002
+[tech-detect:python] [http] [info] http://127.0.0.1:19002
+[tech-detect:simplehttp] [http] [info] http://localhost:19001
+[tech-detect:python] [http] [info] http://localhost:19001
+[tech-detect:simplehttp] [http] [info] http://localhost:19000
+[tech-detect:python] [http] [info] http://localhost:19000
+[tech-detect:simplehttp] [http] [info] http://127.0.0.1:19001
+[tech-detect:python] [http] [info] http://127.0.0.1:19001
+[tech-detect:simplehttp] [http] [info] http://127.0.0.1:19004
+[tech-detect:python] [http] [info] http://127.0.0.1:19004

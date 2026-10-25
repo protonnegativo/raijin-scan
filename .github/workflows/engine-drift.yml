@@ -1,0 +1,90 @@
+name: engine drift
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      nuclei:
+        description: nuclei version to test (latest or vX.Y.Z)
+        default: latest
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WANT: ${{ inputs.nuclei || 'latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: install nuclei
+        run: |
+          mod=$(jq -r .nuclei.go engines.json)
+          go install "$mod@$WANT"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: installed versions
+        id: ver
+        run: |
+          v=$(nuclei -version -duc 2>&1 | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^v//')
+          echo "nuclei $v (tested $(jq -r .nuclei.version engines.json))"
+          echo "nuclei=$v" >> "$GITHUB_OUTPUT"
+      - name: install templates
+        run: nuclei -update-templates -duc -ud "$HOME/nuclei-templates"
+      - run: pip install tiktoken
+      - name: live benchmark
+        run: |
+          LIVE=1 PY=python3 TPL="$HOME/nuclei-templates" bench/run.sh "$RUNNER_TEMP/live" | tee "$RUNNER_TEMP/live.log"
+          grep -E 'nuclei events|MISSING' "$RUNNER_TEMP/live.log" > "$RUNNER_TEMP/verify.txt" || true
+          bad=0
+          if grep -q MISSING "$RUNNER_TEMP/verify.txt" || grep -qE 'events, [1-9][0-9]* \(finding' "$RUNNER_TEMP/verify.txt"; then bad=1; fi
+          if grep -l '"engine_format"' "$RUNNER_TEMP"/live/*/raijin.json; then
+            grep -h -o '"kind":"engine_format"[^}]*' "$RUNNER_TEMP"/live/*/raijin.json >> "$RUNNER_TEMP/verify.txt"; bad=1
+          fi
+          if ! grep -q 'nuclei events' "$RUNNER_TEMP/verify.txt"; then echo "benchmark did not reach verify" >> "$RUNNER_TEMP/verify.txt"; bad=1; fi
+          exit $bad
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-bench
+          path: ${{ runner.temp }}/live
+          retention-days: 14
+      - name: open or update the drift issue
+        if: failure()
+        run: |
+          v="${{ steps.ver.outputs.nuclei }}"
+          run="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          { echo "nuclei $v failed the live benchmark."; echo; echo '```'; cat "$RUNNER_TEMP/verify.txt" 2>/dev/null; echo '```'; echo; echo "Run: $run"; } > body.md
+          gh label create engine-drift --color B60205 --description "An engine update broke the tool" 2>/dev/null || true
+          n=$(gh issue list --label engine-drift --state open --json number --jq '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file body.md
+          else
+            gh issue create --title "Engine drift: nuclei $v" --label engine-drift --body-file body.md
+          fi
+      - name: open or update the bump PR
+        if: success()
+        run: |
+          v="${{ steps.ver.outputs.nuclei }}"
+          old=$(jq -r .nuclei.version engines.json)
+          newer=$(printf '%s\n%s\n' "$old" "$v" | sort -V | tail -1)
+          if [ -z "$v" ] || [ "$v" = "$old" ] || [ "$newer" != "$v" ]; then echo "nothing to bump"; exit 0; fi
+          branch="engine-bump/nuclei-$v"
+          jq --arg v "$v" '.nuclei.version = $v' engines.json > engines.tmp && mv engines.tmp engines.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add engines.json
+          git commit -m "Test with nuclei $v"
+          git push -f origin "$branch"
+          { echo "nuclei $old → $v"; echo; echo '```'; cat "$RUNNER_TEMP/verify.txt"; echo '```'; echo; echo "Live benchmark output: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; } > body.md
+          if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')" ]; then
+            gh pr edit "$branch" --body-file body.md
+          else
+            gh pr create --head "$branch" --title "Test with nuclei $v" --body-file body.md
+          fi

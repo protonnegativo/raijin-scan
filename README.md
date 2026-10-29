@@ -12,7 +12,7 @@
 
 **nuclei for AI agents: every finding, every location, a fraction of the tokens.**
 
-`raijin-scan` is the first public tool of **Raijin**, an arsenal of offensive security tools built for AI agents. The other tools are private for now and will be published as they mature. It runs [nuclei](https://github.com/projectdiscovery/nuclei) underneath and returns the **Raijin Schema**: one compact JSON with the findings ranked by severity, every location where each one matched, info-level noise collapsed into groups, and a count of anything it had to cut.
+`raijin-scan` is part of **Raijin**, an arsenal of offensive security tools built for AI agents. See the [overview](https://github.com/protonnegativo/raijin) for the other tools. It runs [nuclei](https://github.com/projectdiscovery/nuclei) underneath and returns the **Raijin Schema**: one compact JSON with the findings ranked by severity, every location where each one matched, info-level noise collapsed into groups, and a count of anything it had to cut.
 
 ## Why not just run nuclei?
 

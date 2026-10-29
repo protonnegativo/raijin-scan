@@ -2,7 +2,7 @@
 
 Thanks for wanting to help. raijin-scan is a small Go tool, part of [Raijin](https://github.com/protonnegativo/raijin), and small, focused changes are the easiest to review.
 
-By taking part you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Security problems go through [SECURITY.md](SECURITY.md), not public issues.
+By taking part you agree to follow the [Code of Conduct](https://github.com/protonnegativo/.github/blob/main/CODE_OF_CONDUCT.md). Security problems go through [SECURITY.md](SECURITY.md), not public issues.
 
 ## Before you start
 

@@ -50,7 +50,7 @@ jobs:
           fi
           if ! grep -q 'nuclei events' "$RUNNER_TEMP/verify.txt"; then echo "benchmark did not reach verify" >> "$RUNNER_TEMP/verify.txt"; bad=1; fi
           exit $bad
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: live-bench

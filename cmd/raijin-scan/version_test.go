@@ -33,6 +33,19 @@ func TestBuildVersion(t *testing.T) {
 	}
 }
 
+func TestBuildVersionPrefersReleaseVersion(t *testing.T) {
+	old := releaseVersion
+	defer func() { releaseVersion = old }()
+	releaseVersion = "v9.9.9"
+	if got := buildVersion(nil, false); got != "v9.9.9" {
+		t.Errorf("buildVersion = %q, want v9.9.9", got)
+	}
+	info := &debug.BuildInfo{Main: debug.Module{Version: "v0.1.3"}}
+	if got := buildVersion(info, true); got != "v9.9.9" {
+		t.Errorf("buildVersion = %q, want v9.9.9", got)
+	}
+}
+
 func TestVersionFlag(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"--version"}, &out, &errb); code != 0 {

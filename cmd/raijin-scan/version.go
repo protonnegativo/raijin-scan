@@ -8,12 +8,19 @@ import (
 	"github.com/protonnegativo/raijin-scan/internal/nuclei"
 )
 
-// version is the release this binary was installed from, or "dev" for a local build.
+// releaseVersion is set at link time by release builds: -ldflags "-X main.releaseVersion=v1.2.3".
+var releaseVersion string
+
+// version is the release this binary was built as, the version it was installed from, or "dev" for a local build.
 var version = buildVersion(debug.ReadBuildInfo())
 
-// buildVersion returns the module version when the binary was installed with `go install ...@vX.Y.Z`
-// (or @latest), and otherwise "dev", plus the VCS revision and +dirty when the build settings carry them.
+// buildVersion returns releaseVersion when the linker set it, then the module version when the binary was
+// installed with `go install ...@vX.Y.Z` (or @latest), and otherwise "dev", plus the VCS revision and
+// +dirty when the build settings carry them.
 func buildVersion(info *debug.BuildInfo, ok bool) string {
+	if releaseVersion != "" {
+		return releaseVersion
+	}
 	if !ok {
 		return "dev"
 	}

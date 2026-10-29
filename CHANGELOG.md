@@ -7,7 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Every result starts with `"schema_version":1`. Readers can refuse a document whose version they do not understand.
-- An invalid scope file is reported as JSON on stdout (one `kind: "scope"` error per invalid line, with a hint that says what to write instead), nothing is scanned, and the exit code is 1. It used to be a one-line message on stderr.
+- An invalid scope file is reported as JSON on stdout (one `kind: "scope"` error per invalid line, with a hint that says what to write instead), nothing is scanned, and the exit code is 2 (1 is for wrong usage). It used to be a one-line message on stderr.
 - Release builds can set the version with `-ldflags "-X main.releaseVersion=vX.Y.Z"`.
 
 ### Changed

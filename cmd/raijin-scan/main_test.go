@@ -155,8 +155,11 @@ func TestInvalidScopeIsStructuredAndScansNothing(t *testing.T) {
 	var out, errb bytes.Buffer
 	// --nuclei points at a path that does not exist: if the engine were reached, the error would be missing_engine.
 	code := run([]string{"--scope", p, "-u", "https://example.com", "--nuclei", "/nonexistent/nuclei"}, &out, &errb)
-	if code == 0 {
-		t.Fatalf("exit 0 for an invalid scope")
+	if code != 2 {
+		t.Fatalf("exit %d for an invalid scope, want 2", code)
+	}
+	if !strings.HasPrefix(out.String(), `{"schema_version":1,`) {
+		t.Errorf("stdout must start with the schema envelope: %.60s", out.String())
 	}
 	var res struct {
 		SchemaVersion int `json:"schema_version"`
@@ -189,8 +192,8 @@ func TestInvalidScopeIsStructuredAndScansNothing(t *testing.T) {
 func TestMissingScopeFileIsStructured(t *testing.T) {
 	var out, errb bytes.Buffer
 	code := run([]string{"--scope", filepath.Join(t.TempDir(), "nope.txt")}, &out, &errb)
-	if code == 0 {
-		t.Fatal("exit 0 for an unreadable scope")
+	if code != 2 {
+		t.Fatalf("exit %d for an unreadable scope, want 2", code)
 	}
 	if !strings.Contains(out.String(), `"kind":"scope"`) {
 		t.Errorf("want a scope error in the JSON: %s", out.String())

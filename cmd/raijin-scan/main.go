@@ -56,6 +56,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	showVersion := fs.Bool("version", false, "print the version")
 	showBanner := fs.Bool("banner", false, "print the Raijin banner to stderr (off by default to keep output small)")
 	fs.Usage = func() {
+		defer fmt.Fprintf(stderr, "\nExit codes: 0 ok; 1 wrong usage (bad flag, missing argument); 2 structured error, JSON on stdout (invalid scope, nuclei missing).\n")
 		fmt.Fprintf(stderr, "usage: raijin-scan --scope scope.txt [-u target | -l targets.txt | --input results.jsonl] [flags] [-- extra nuclei args]\n\nWith no targets it scans every host the scope names.\n\n")
 		fs.PrintDefaults()
 	}
@@ -90,7 +91,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		res.Errors = append(res.Errors, scope.SchemaErrors(err)...)
 		res.Summary = "invalid scope file, nothing scanned"
 		write(stdout, &res, *format, *pretty)
-		return 1
+		return 2
 	}
 
 	var events []nuclei.Event
@@ -136,7 +137,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 				res.Summary = "the scope names no single host to scan"
 				res.Target = *scopeFile
 				write(stdout, &res, *format, *pretty)
-				return 1
+				return 2
 			}
 			fmt.Fprintln(stderr, "raijin-scan: no targets in scope")
 			return 1

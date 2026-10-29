@@ -5,7 +5,7 @@ project_name: raijin-scan
 
 before:
   hooks:
-    - go mod tidy -diff
+    - go mod tidy
 
 builds:
   - id: raijin-scan

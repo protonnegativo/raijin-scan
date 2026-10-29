@@ -1,41 +1,29 @@
 // Package schema defines the Raijin Schema, the JSON shape every Raijin tool returns.
 //
+// The envelope (Result, Error, Budget, Marshal and the rank tables) lives in raijin-core; this package
+// keeps what is specific to raijin-scan: Finding and Group.
+//
 // Nothing the engine found is dropped silently: every finding and every location where it matched is
 // listed, and anything a budget cuts is counted in Omitted. What an agent can rebuild is left out of the
 // JSON to save tokens: empty lists, the budget when nothing was cut, a count equal to the locations
 // listed, and fields at their documented default.
 package schema
 
-import "encoding/json"
+import core "github.com/protonnegativo/raijin-core/schema"
 
-// Result is the top-level object a Raijin tool writes to stdout.
-type Result struct {
-	Tool     string         `json:"tool"`
-	Version  string         `json:"version"`
-	Target   string         `json:"target"`
-	Summary  string         `json:"summary"`
-	Findings []Finding      `json:"findings"`
-	Groups   []Group        `json:"groups"`
-	Omitted  map[string]int `json:"omitted,omitempty"`
-	Errors   []Error        `json:"errors,omitempty"`
-	Next     []string       `json:"next,omitempty"`
-	// Raw is the file with the engine's full output, for details the result leaves out.
-	Raw    string `json:"raw,omitempty"`
-	Budget Budget `json:"budget"`
-}
+type (
+	// Result is the top-level object a Raijin tool writes to stdout.
+	Result = core.Result[Finding, Group]
+	Error  = core.Error
+	Budget = core.Budget
+)
 
-// MarshalJSON writes the budget only when something was cut.
-func (r Result) MarshalJSON() ([]byte, error) {
-	type plain Result
-	out := struct {
-		plain
-		Budget *Budget `json:"budget,omitempty"`
-	}{plain: plain(r)}
-	if r.Budget.Truncated {
-		out.Budget = &r.Budget
-	}
-	return json.Marshal(out)
-}
+var (
+	Marshal        = core.Marshal
+	Write          = core.Write
+	SeverityRank   = core.SeverityRank
+	ConfidenceRank = core.ConfidenceRank
+)
 
 // Finding is one deduplicated issue with every location where it matched.
 // The same tool and ID in two runs is the same finding.
@@ -62,10 +50,8 @@ type Finding struct {
 func (f Finding) MarshalJSON() ([]byte, error) {
 	type plain Finding
 	p := plain(f)
-	if p.Count <= len(p.Locations) {
-		p.Count = 0
-	}
-	return json.Marshal(p)
+	p.Count = core.OmitCount(p.Count, len(p.Locations))
+	return core.Marshal(p)
 }
 
 // Group is info-level output collapsed per template: every variant listed matched every location listed.
@@ -82,31 +68,6 @@ type Group struct {
 func (g Group) MarshalJSON() ([]byte, error) {
 	type plain Group
 	p := plain(g)
-	if p.Count <= len(p.Locations) {
-		p.Count = 0
-	}
-	return json.Marshal(p)
-}
-
-// Error is a problem during the run, with a hint about what to try next.
-type Error struct {
-	Kind string `json:"kind"`
-	Hint string `json:"hint"`
-}
-
-// Budget reports the output limits that were applied.
-type Budget struct {
-	MaxItems  int  `json:"max_items"`
-	MaxBytes  int  `json:"max_bytes"`
-	Truncated bool `json:"truncated"`
-}
-
-// SeverityRank orders severities from most to least important.
-var SeverityRank = map[string]int{
-	"critical": 5,
-	"high":     4,
-	"medium":   3,
-	"low":      2,
-	"info":     1,
-	"unknown":  0,
+	p.Count = core.OmitCount(p.Count, len(p.Locations))
+	return core.Marshal(p)
 }

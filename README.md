@@ -1,5 +1,11 @@
 # ⚡ Raijin Scan
 
+[![CI](https://github.com/protonnegativo/raijin-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/protonnegativo/raijin-scan/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/protonnegativo/raijin-scan)](https://github.com/protonnegativo/raijin-scan/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/protonnegativo/raijin-scan)](LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/protonnegativo/raijin-scan.svg)](https://pkg.go.dev/github.com/protonnegativo/raijin-scan)
+[![Go Report Card](https://goreportcard.com/badge/github.com/protonnegativo/raijin-scan)](https://goreportcard.com/report/github.com/protonnegativo/raijin-scan)
+
 <p align="center">
   <img src="docs/banner.png" alt="Raijin banner: a storm thunderbird in braille inside a target-lock frame, the RAIJIN name and a status HUD" width="760">
 </p>
@@ -20,28 +26,28 @@ nuclei is built for people and pipelines. An agent pays for every byte it reads.
 Here is the same scan, with the same matches, read by an agent (tokens, `o200k_base`):
 
 ```
-Broad scan: 2,852 templates, 124 matches, all info
-  raijin-scan     ▏                          434 tokens
-  nuclei -jsonl   ████████████████████    72,698 tokens
+Broad scan: 2,852 templates, 130 matches (124 info, 6 real)
+  raijin-scan     ▏                          579 tokens
+  nuclei -jsonl   ████████████████████    77,396 tokens
 
 Exposures scan: 30 matches, 3 real findings (2 high, 1 medium)
-  raijin-scan     ▌                          430 tokens
-  nuclei -jsonl   ████████████████████    15,831 tokens
+  raijin-scan     ▌                          414 tokens
+  nuclei -jsonl   ████████████████████    16,088 tokens
 ```
 
-raijin-scan reads **168×** fewer tokens on the broad scan and **37×** fewer on the exposures scan. Each scan's bars are drawn to scale against nuclei.
+raijin-scan reads **133.7×** fewer tokens on the broad scan and **38.9×** fewer on the exposures scan. Each scan's bars are drawn to scale against nuclei.
 
 Other nuclei output modes on the same scans:
 
-- `-jsonl -omit-raw`: 44,771 tokens on the broad scan and 9,216 on the exposures scan.
+- `-jsonl -omit-raw`: 46,703 tokens on the broad scan and 9,260 on the exposures scan.
 - Text output: 3,675 and 938 tokens.
 
-- **Nothing is lost.** Every nuclei match, a template plus the exact URL, is in the output. `bench/verify.py` checked all 154 matches in both scans and none were missing.
+- **Nothing is lost.** Every nuclei match, a template plus the exact URL, is in the output. `bench/verify.py` checked all 160 matches in both scans and none were missing.
 - **The real problems come first.** Findings are ranked by severity. 100 missing-header matches become one group: the 10 header names and the 10 URLs.
 - **Output is bounded.** On a huge scan, `--max-bytes` cuts the least important data first and counts every cut. nuclei's output grows with hosts × templates.
 - **Details are one file away.** nuclei's full JSONL is saved to disk, and its path is in `raw`. It holds the description, references, the `curl` command to reproduce, and timestamps, and it costs no tokens until the agent opens it.
 
-Against nuclei's text output, the gap is smaller: 8.5× on the broad scan and 2.2× on the exposures scan. The text output also has no structure, no dedup and no ranking. Full method and numbers are in [BENCHMARK.md](BENCHMARK.md), and `bench/run.sh` reproduces them.
+Against nuclei's text output, the gap is smaller: 6.6× on the broad scan and 2.3× on the exposures scan. The text output also has no structure, no dedup and no ranking. Full method and numbers are in [BENCHMARK.md](BENCHMARK.md), and `bench/run.sh` reproduces them.
 
 ## Install
 
@@ -81,8 +87,9 @@ Targets outside the scope are dropped before nuclei runs, and results for out-of
 
 ```json
 {
+  "schema_version": 1,
   "tool": "raijin-scan",
-  "version": "0.1.0",
+  "version": "v0.1.0",
   "target": "2 target(s)",
   "summary": "2 findings (1 high, 1 medium), 0 info groups, 4 raw matches",
   "findings": [
@@ -124,7 +131,13 @@ What the reducer does:
   4. the lowest-ranked findings.
 
   Every cut is counted in `omitted`, `budget.truncated` is set, and `next` points to the raw file. `--max-items` caps the number of findings (0, the default, keeps all).
-- **Errors** say what to try next. If nuclei is missing, the exit code is 2.
+- **Errors** say what to try next.
+
+`schema_version` is the version of the Raijin Schema envelope (currently `1`); it is always the first field.
+
+An invalid scope file is reported in `errors` as one `kind: "scope"` entry per invalid line (`hint` has the line number and what to write instead), and nothing is scanned.
+
+Exit codes: **0** ok; **1** wrong usage (bad flag, missing argument), with a message on stderr; **2** structured error with the JSON on stdout (invalid scope, nuclei missing), which the agent tells apart by `errors[].kind`.
 
 Fields an agent can rebuild are left out to save tokens:
 
@@ -168,7 +181,7 @@ go test ./...
 go vet ./...
 ```
 
-Standard library only. nuclei runs as a subprocess with `-jsonl -omit-raw`, so the binary stays small and nuclei can be updated on its own.
+The only dependency is `github.com/protonnegativo/raijin-core` (scope, the output envelope and state); everything else is the standard library. nuclei runs as a subprocess with `-jsonl -omit-raw`, so the binary stays small and nuclei can be updated on its own.
 
 ## Roadmap
 

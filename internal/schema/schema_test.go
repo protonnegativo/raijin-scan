@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -43,5 +44,37 @@ func TestCountAndBudgetAppearWhenSomethingIsCut(t *testing.T) {
 	}
 	if !strings.Contains(s, `"budget":{"max_items":20,"max_bytes":8000,"truncated":true}`) || strings.Count(s, "budget") != 1 {
 		t.Errorf("budget must be written once when something was cut: %s", s)
+	}
+}
+
+func TestSchemaVersionIsFirstField(t *testing.T) {
+	b, err := json.Marshal(Result{Tool: "raijin-scan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(b), `{"schema_version":1,"tool":"raijin-scan"`) {
+		t.Errorf("schema_version must come first: %s", b)
+	}
+}
+
+// Before raijin-core, raijin-scan wrote & < > in finding strings as & < >.
+func TestHTMLCharactersAreNotEscaped(t *testing.T) {
+	res := Result{
+		Findings: []Finding{{ID: "a", Title: "A & B <c>", Locations: []string{"https://a/?x=1&y=<2>"}}},
+		Groups:   []Group{{ID: "g", Variants: []string{"a&b"}, Locations: []string{"https://a/?x=1&y=2"}}},
+	}
+	// Write is what the tool's output path uses; encoding/json alone would escape again.
+	var buf bytes.Buffer
+	if err := Write(&buf, &res, false); err != nil {
+		t.Fatal(err)
+	}
+	s := buf.String()
+	if strings.Contains(s, `\u00`) {
+		t.Errorf("& < > must be written as themselves: %s", s)
+	}
+	for _, want := range []string{`"title":"A & B <c>"`, `https://a/?x=1&y=<2>`, `"a&b"`} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %s in %s", want, s)
+		}
 	}
 }

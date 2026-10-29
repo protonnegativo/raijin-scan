@@ -4,7 +4,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,12 +12,12 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/protonnegativo/raijin-core/scope"
+	"github.com/protonnegativo/raijin-core/state"
 	"github.com/protonnegativo/raijin-scan/internal/banner"
 	"github.com/protonnegativo/raijin-scan/internal/nuclei"
 	"github.com/protonnegativo/raijin-scan/internal/reduce"
 	"github.com/protonnegativo/raijin-scan/internal/schema"
-	"github.com/protonnegativo/raijin-scan/internal/scope"
-	"github.com/protonnegativo/raijin-scan/internal/state"
 )
 
 type multi []string
@@ -74,12 +73,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "raijin-scan: --scope is required")
 		return 1
 	}
-	sc, err := scope.Load(*scopeFile)
-	if err != nil {
-		fmt.Fprintln(stderr, "raijin-scan: scope:", err)
-		return 1
-	}
-
 	res := schema.Result{
 		Tool:     "raijin-scan",
 		Version:  version,
@@ -89,6 +82,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		Errors:   []schema.Error{},
 		Next:     []string{},
 		Budget:   schema.Budget{MaxItems: *maxItems, MaxBytes: *maxBytes},
+	}
+
+	sc, err := scope.Load(*scopeFile)
+	if err != nil {
+		// An invalid scope is an error the caller can fix: report every bad line and run nothing.
+		res.Errors = append(res.Errors, scope.SchemaErrors(err)...)
+		res.Summary = "invalid scope file, nothing scanned"
+		write(stdout, &res, *format, *pretty)
+		return 1
 	}
 
 	var events []nuclei.Event
@@ -202,7 +204,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			res.Errors = append(res.Errors, schema.Error{Kind: "state_error", Hint: err.Error()})
 		} else {
-			newCount = st.Mark(res.Findings, allLocations)
+			newCount = state.Mark(st, res.Findings, allLocations,
+				func(f *schema.Finding) string { return f.Fingerprint },
+				func(f *schema.Finding) { f.New = true })
 			if err := st.Save(*statePath); err != nil {
 				res.Errors = append(res.Errors, schema.Error{Kind: "state_error", Hint: err.Error()})
 			}
@@ -311,11 +315,7 @@ func write(w io.Writer, res *schema.Result, format string, pretty bool) {
 		}
 		return
 	}
-	enc := json.NewEncoder(w)
-	if pretty {
-		enc.SetIndent("", "  ")
-	}
-	_ = enc.Encode(res)
+	_ = schema.Write(w, res, pretty)
 }
 
 func readLines(path string) ([]string, error) {

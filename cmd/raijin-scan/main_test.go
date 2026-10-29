@@ -145,3 +145,54 @@ func TestEngineVersionAndFormat(t *testing.T) {
 		t.Errorf("engine_format: %q", kinds["engine_format"])
 	}
 }
+
+func TestInvalidScopeIsStructuredAndScansNothing(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "scope.txt")
+	body := "example.com\nexample.com:443\n10.0.0.7/24\n*example.com\n"
+	if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	// --nuclei points at a path that does not exist: if the engine were reached, the error would be missing_engine.
+	code := run([]string{"--scope", p, "-u", "https://example.com", "--nuclei", "/nonexistent/nuclei"}, &out, &errb)
+	if code == 0 {
+		t.Fatalf("exit 0 for an invalid scope")
+	}
+	var res struct {
+		SchemaVersion int `json:"schema_version"`
+		Summary       string
+		Findings      []any
+		Errors        []struct{ Kind, Hint string }
+	}
+	if err := json.Unmarshal(out.Bytes(), &res); err != nil {
+		t.Fatalf("stdout is not JSON: %v\n%s", err, out.String())
+	}
+	if res.SchemaVersion != 1 || len(res.Findings) != 0 || res.Summary == "" {
+		t.Errorf("unexpected result: %+v", res)
+	}
+	if len(res.Errors) != 3 {
+		t.Fatalf("want one error per invalid line (3), got %+v", res.Errors)
+	}
+	for i, want := range []string{"line 2", "line 3", "line 4"} {
+		e := res.Errors[i]
+		if e.Kind != "scope" || !strings.Contains(e.Hint, want) {
+			t.Errorf("error %d = %+v, want kind scope mentioning %q", i, e, want)
+		}
+	}
+	for _, e := range res.Errors {
+		if e.Kind == "missing_engine" {
+			t.Errorf("the engine must not run: %+v", e)
+		}
+	}
+}
+
+func TestMissingScopeFileIsStructured(t *testing.T) {
+	var out, errb bytes.Buffer
+	code := run([]string{"--scope", filepath.Join(t.TempDir(), "nope.txt")}, &out, &errb)
+	if code == 0 {
+		t.Fatal("exit 0 for an unreadable scope")
+	}
+	if !strings.Contains(out.String(), `"kind":"scope"`) {
+		t.Errorf("want a scope error in the JSON: %s", out.String())
+	}
+}

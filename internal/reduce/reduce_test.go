@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/protonnegativo/raijin-core/scope"
 	"github.com/protonnegativo/raijin-scan/internal/nuclei"
 	"github.com/protonnegativo/raijin-scan/internal/schema"
-	"github.com/protonnegativo/raijin-scan/internal/scope"
 )
 
 func load(t *testing.T) []nuclei.Event {

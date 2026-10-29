@@ -1,5 +1,11 @@
 # ⚡ Raijin Scan
 
+[![CI](https://github.com/protonnegativo/raijin-scan/actions/workflows/ci.yml/badge.svg)](https://github.com/protonnegativo/raijin-scan/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/protonnegativo/raijin-scan)](https://github.com/protonnegativo/raijin-scan/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/protonnegativo/raijin-scan)](LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/protonnegativo/raijin-scan.svg)](https://pkg.go.dev/github.com/protonnegativo/raijin-scan)
+[![Go Report Card](https://goreportcard.com/badge/github.com/protonnegativo/raijin-scan)](https://goreportcard.com/report/github.com/protonnegativo/raijin-scan)
+
 <p align="center">
   <img src="docs/banner.png" alt="Raijin banner: a storm thunderbird in braille inside a target-lock frame, the RAIJIN name and a status HUD" width="760">
 </p>

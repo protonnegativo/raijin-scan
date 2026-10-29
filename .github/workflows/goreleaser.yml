@@ -1,0 +1,42 @@
+name: Binaries
+
+# Builds the release binaries with GoReleaser and attaches them to the GitHub Release of a v* tag.
+# A tag pushed with GITHUB_TOKEN (as .github/release.sh does) does not start workflows, so the
+# job that tags must also run:  gh workflow run goreleaser.yml -f tag="$next"
+# A tag pushed by a person starts it by itself.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: existing tag to build (vX.Y.Z)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ env.TAG }}

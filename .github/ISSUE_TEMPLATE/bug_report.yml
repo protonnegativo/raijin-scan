@@ -1,0 +1,58 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Do not paste secrets, tokens or targets you are not allowed to share. For a security vulnerability, use the private reporting link in the issue chooser instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `raijin-scan --version`
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and architecture
+      placeholder: Linux amd64, macOS arm64, ...
+    validations:
+      required: true
+  - type: input
+    id: engine
+    attributes:
+      label: Engine version (if the tool wraps one)
+      placeholder: nuclei 3.x.y
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command line, with targets replaced by example.com if needed.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output, or the relevant part of it.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: authorized
+    attributes:
+      label: Checks
+      options:
+        - label: I only ran this against targets I am authorized to test.
+          required: true
+        - label: I searched the existing issues.
+          required: true

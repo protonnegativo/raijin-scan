@@ -10,6 +10,7 @@ on:
 permissions:
   contents: write
   issues: write
+  actions: write
 jobs:
   drift:
     runs-on: ubuntu-latest

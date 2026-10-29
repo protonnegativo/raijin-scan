@@ -11,6 +11,7 @@ on:
         default: patch
 permissions:
   contents: write
+  actions: write
 jobs:
   release:
     runs-on: ubuntu-latest
